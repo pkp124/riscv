@@ -7,6 +7,7 @@ add_executable(app
     src/startup.S
     src/main.c
     src/uart.c
+    src/htif.c
     src/platform.c
 )
 

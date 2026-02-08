@@ -3,7 +3,7 @@
  * @brief Phase 2 bare-metal application main entry point
  *
  * This application demonstrates basic bare-metal functionality:
- * - UART output
+ * - Console output (UART or HTIF depending on platform)
  * - CSR access
  * - Memory operations
  * - Function calls
@@ -13,10 +13,20 @@
 
 #include "csr.h"
 #include "platform.h"
-#include "uart.h"
 
 #include <stdbool.h>
 #include <stdint.h>
+
+/* Include platform-specific I/O */
+#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
+#include "uart.h"
+#define console_puts console_puts
+#define console_putc console_putc
+#elif defined(PLATFORM_SPIKE)
+#include "htif.h"
+#define console_puts htif_puts
+#define console_putc htif_putc
+#endif
 
 /* =============================================================================
  * Forward Declarations
@@ -69,7 +79,7 @@ static void int_to_str(uint64_t value, char *buf, int buf_size)
  */
 static void print_hex(uint64_t value)
 {
-    uart_puts("0x");
+    console_puts("0x");
     char hex[17];
     const char hexchars[] = "0123456789ABCDEF";
 
@@ -84,7 +94,7 @@ static void print_hex(uint64_t value)
         start++;
     }
 
-    uart_puts(&hex[start]);
+    console_puts(&hex[start]);
 }
 
 /**
@@ -95,13 +105,13 @@ static void record_test(const char *name, bool passed)
     tests_total++;
     if (passed) {
         tests_passed++;
-        uart_puts("[TEST] ");
-        uart_puts(name);
-        uart_puts(": PASS\n");
+        console_puts("[TEST] ");
+        console_puts(name);
+        console_puts(": PASS\n");
     } else {
-        uart_puts("[TEST] ");
-        uart_puts(name);
-        uart_puts(": FAIL\n");
+        console_puts("[TEST] ");
+        console_puts(name);
+        console_puts(": FAIL\n");
     }
 }
 
@@ -116,17 +126,17 @@ static void test_csr(void)
 {
     /* Read Hart ID */
     uint64_t hartid = read_csr(mhartid);
-    uart_puts("[CSR] Hart ID: ");
+    console_puts("[CSR] Hart ID: ");
     char buf[32];
     int_to_str(hartid, buf, sizeof(buf));
-    uart_puts(buf);
-    uart_puts("\n");
+    console_puts(buf);
+    console_puts("\n");
 
     /* Read mstatus */
     uint64_t mstatus = read_csr(mstatus);
-    uart_puts("[CSR] mstatus: ");
+    console_puts("[CSR] mstatus: ");
     print_hex(mstatus);
-    uart_puts("\n");
+    console_puts("\n");
 
     /* Verify Hart ID is 0 for single-core */
     record_test("CSR Hart ID", hartid == 0);
@@ -140,14 +150,14 @@ static void test_csr(void)
  */
 static void test_uart(void)
 {
-    uart_puts("[UART] Character output: ");
+    console_puts("[UART] Character output: ");
 
     /* Test individual character output */
-    uart_putc('P');
-    uart_putc('A');
-    uart_putc('S');
-    uart_putc('S');
-    uart_puts("\n");
+    console_putc('P');
+    console_putc('A');
+    console_putc('S');
+    console_putc('S');
+    console_puts("\n");
 
     record_test("UART output", true);
 }
@@ -219,16 +229,16 @@ static void test_function_calls(void)
  */
 static void print_banner(void)
 {
-    uart_puts("\n");
-    uart_puts("=================================================================\n");
-    uart_puts("RISC-V Bare-Metal System Explorer\n");
-    uart_puts("=================================================================\n");
-    uart_puts("Platform: ");
-    uart_puts(platform_get_name());
-    uart_puts("\n");
-    uart_puts("Phase: 2 - Single-Core Bare-Metal\n");
-    uart_puts("=================================================================\n");
-    uart_puts("\n");
+    console_puts("\n");
+    console_puts("=================================================================\n");
+    console_puts("RISC-V Bare-Metal System Explorer\n");
+    console_puts("=================================================================\n");
+    console_puts("Platform: ");
+    console_puts(platform_get_name());
+    console_puts("\n");
+    console_puts("Phase: 2 - Single-Core Bare-Metal\n");
+    console_puts("=================================================================\n");
+    console_puts("\n");
 }
 
 /* =============================================================================
@@ -241,44 +251,44 @@ int main(void)
     print_banner();
 
     /* Test 1: Hello RISC-V */
-    uart_puts("Hello RISC-V\n");
-    uart_puts("\n");
+    console_puts("Hello RISC-V\n");
+    console_puts("\n");
 
     /* Run all tests */
-    uart_puts("[INFO] Running Phase 2 tests...\n");
-    uart_puts("\n");
+    console_puts("[INFO] Running Phase 2 tests...\n");
+    console_puts("\n");
 
     test_csr();
-    uart_puts("\n");
+    console_puts("\n");
 
     test_uart();
-    uart_puts("\n");
+    console_puts("\n");
 
     test_memory();
-    uart_puts("\n");
+    console_puts("\n");
 
     test_function_calls();
-    uart_puts("\n");
+    console_puts("\n");
 
     /* Print test summary */
-    uart_puts("=================================================================\n");
-    uart_puts("[RESULT] Phase 2 tests: ");
+    console_puts("=================================================================\n");
+    console_puts("[RESULT] Phase 2 tests: ");
     char buf[32];
     int_to_str(tests_passed, buf, sizeof(buf));
-    uart_puts(buf);
-    uart_puts("/");
+    console_puts(buf);
+    console_puts("/");
     int_to_str(tests_total, buf, sizeof(buf));
-    uart_puts(buf);
+    console_puts(buf);
     if (tests_passed == tests_total) {
-        uart_puts(" PASS\n");
+        console_puts(" PASS\n");
     } else {
-        uart_puts(" FAIL\n");
+        console_puts(" FAIL\n");
     }
-    uart_puts("=================================================================\n");
-    uart_puts("\n");
+    console_puts("=================================================================\n");
+    console_puts("\n");
 
     /* Application complete */
-    uart_puts("[INFO] Phase 2 complete. System halted.\n");
+    console_puts("[INFO] Phase 2 complete. System halted.\n");
 
     return 0;
 }
