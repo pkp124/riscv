@@ -150,29 +150,50 @@ jobs:
             fi
           fi
           echo "Using preset: $PRESET"
-          cmake --preset $PRESET || echo "Preset $PRESET not ready yet"
+          echo "PRESET=$PRESET" >> $GITHUB_ENV
+          cmake --preset $PRESET
 
       - name: Build ELF
         run: |
-          # Find build directory
-          BUILD_DIR=$(find build -maxdepth 1 -type d -name "*" | head -1)
-          if [ -n "$BUILD_DIR" ] && [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
-            echo "Building in: $BUILD_DIR"
-            cmake --build $BUILD_DIR
+          # Use preset-specific build directory
+          if [ "${{ env.PRESET }}" = "default" ]; then
+            BUILD_DIR="build/default"
+          elif [ "${{ env.PRESET }}" = "qemu-smp" ]; then
+            BUILD_DIR="build/qemu-smp"
+          elif [ "${{ env.PRESET }}" = "qemu-rvv-256" ]; then
+            BUILD_DIR="build/qemu-rvv-256"
+          elif [ "${{ env.PRESET }}" = "qemu-smp-rvv" ]; then
+            BUILD_DIR="build/qemu-smp-rvv"
+          elif [ "${{ env.PRESET }}" = "spike" ]; then
+            BUILD_DIR="build/spike"
+          elif [ "${{ env.PRESET }}" = "spike-smp" ]; then
+            BUILD_DIR="build/spike-smp"
+          elif [ "${{ env.PRESET }}" = "spike-rvv" ]; then
+            BUILD_DIR="build/spike-rvv"
           else
-            echo "CMake build not yet ready (Phase 1 in progress)"
+            BUILD_DIR="build/default"
+          fi
+          
+          echo "Building in: $BUILD_DIR"
+          if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+            cmake --build $BUILD_DIR
+            echo "BUILD_DIR=$BUILD_DIR" >> $GITHUB_ENV
+          else
+            echo "ERROR: CMake not configured properly"
+            exit 1
           fi
 
       - name: Upload ELF artifact
-        if: hashFiles('build/*/bin/app') != '' || hashFiles('build/*/app/app.elf') != ''
         uses: actions/upload-artifact@v4
         with:
           name: elf-${{ matrix.platform }}-${{ matrix.config }}-rvv${{ matrix.rvv }}
           path: |
-            build/*/bin/app
-            build/*/app/app.elf
+            ${{ env.BUILD_DIR }}/bin/app
+            ${{ env.BUILD_DIR }}/app/app.elf
+            ${{ env.BUILD_DIR }}/app/app.dump
+            ${{ env.BUILD_DIR }}/app/app.bin
           retention-days: 30
-        continue-on-error: true
+          if-no-files-found: warn
 
   # ============================================================
   # Job 3: Simulation Tests (QEMU)
