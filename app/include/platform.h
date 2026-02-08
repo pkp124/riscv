@@ -1,7 +1,7 @@
 /**
  * @file platform.h
  * @brief Platform abstraction layer for RISC-V bare-metal applications
- * 
+ *
  * This header provides platform-specific definitions and abstractions
  * for different RISC-V simulation platforms (QEMU, Spike, gem5, Renode).
  */
@@ -9,24 +9,24 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* =============================================================================
  * Platform Detection
  * ============================================================================= */
 
 #if defined(PLATFORM_QEMU_VIRT)
-    #define PLATFORM_NAME "QEMU virt"
+#define PLATFORM_NAME "QEMU virt"
 #elif defined(PLATFORM_SPIKE)
-    #define PLATFORM_NAME "Spike"
+#define PLATFORM_NAME "Spike"
 #elif defined(PLATFORM_GEM5)
-    #define PLATFORM_NAME "gem5"
+#define PLATFORM_NAME "gem5"
 #elif defined(PLATFORM_RENODE)
-    #define PLATFORM_NAME "Renode"
+#define PLATFORM_NAME "Renode"
 #else
-    #error "No platform defined! Use -DPLATFORM_QEMU_VIRT or similar"
+#error "No platform defined! Use -DPLATFORM_QEMU_VIRT or similar"
 #endif
 
 /* =============================================================================
@@ -34,26 +34,26 @@
  * ============================================================================= */
 
 /* RAM base address (standard RISC-V) */
-#define RAM_BASE      0x80000000UL
-#define RAM_SIZE      (128 * 1024 * 1024)  /* 128 MB */
+#define RAM_BASE 0x80000000UL
+#define RAM_SIZE (128 * 1024 * 1024) /* 128 MB */
 
 /* UART base addresses (platform-specific) */
 #if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
-    #define UART_BASE 0x10000000UL          /* NS16550A UART */
+#define UART_BASE 0x10000000UL /* NS16550A UART */
 #elif defined(PLATFORM_SPIKE)
-    /* Spike uses HTIF (Host-Target Interface), not MMIO UART */
-    #define HTIF_TOHOST   0x80001000UL
-    #define HTIF_FROMHOST 0x80001008UL
+/* Spike uses HTIF (Host-Target Interface), not MMIO UART */
+#define HTIF_TOHOST 0x80001000UL
+#define HTIF_FROMHOST 0x80001008UL
 #endif
 
 /* CLINT (Core-Local Interruptor) */
-#define CLINT_BASE    0x02000000UL
-#define CLINT_MSIP    (CLINT_BASE + 0x0000)  /* Machine Software Interrupt Pending */
+#define CLINT_BASE 0x02000000UL
+#define CLINT_MSIP (CLINT_BASE + 0x0000)     /* Machine Software Interrupt Pending */
 #define CLINT_MTIMECMP (CLINT_BASE + 0x4000) /* Machine Time Compare */
-#define CLINT_MTIME   (CLINT_BASE + 0xBFF8)  /* Machine Time */
+#define CLINT_MTIME (CLINT_BASE + 0xBFF8)    /* Machine Time */
 
 /* PLIC (Platform-Level Interrupt Controller) */
-#define PLIC_BASE     0x0C000000UL
+#define PLIC_BASE 0x0C000000UL
 
 /* =============================================================================
  * Hart (Hardware Thread) Configuration
@@ -82,22 +82,22 @@ void platform_init(void);
  * @brief Get platform name string
  * @return Platform name
  */
-const char* platform_get_name(void);
+const char *platform_get_name(void);
 
 /* =============================================================================
  * Utility Macros
  * ============================================================================= */
 
 /* Memory barriers */
-#define mb()   __asm__ __volatile__ ("fence" ::: "memory")
-#define rmb()  __asm__ __volatile__ ("fence r,r" ::: "memory")
-#define wmb()  __asm__ __volatile__ ("fence w,w" ::: "memory")
+#define mb() __asm__ __volatile__("fence" ::: "memory")
+#define rmb() __asm__ __volatile__("fence r,r" ::: "memory")
+#define wmb() __asm__ __volatile__("fence w,w" ::: "memory")
 
 /* Compiler barriers */
-#define barrier() __asm__ __volatile__ ("" ::: "memory")
+#define barrier() __asm__ __volatile__("" ::: "memory")
 
 /* Wait for interrupt */
-#define wfi() __asm__ __volatile__ ("wfi")
+#define wfi() __asm__ __volatile__("wfi")
 
 /* =============================================================================
  * Linker Symbols

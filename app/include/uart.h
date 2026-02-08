@@ -1,7 +1,7 @@
 /**
  * @file uart.h
  * @brief UART driver for NS16550A (QEMU virt, gem5, Renode)
- * 
+ *
  * Simple polled UART driver for bare-metal applications.
  * No interrupts, no buffering - direct register access.
  */
@@ -9,9 +9,9 @@
 #ifndef UART_H
 #define UART_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* =============================================================================
  * UART API
