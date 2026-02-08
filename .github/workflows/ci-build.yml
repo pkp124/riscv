@@ -245,13 +245,25 @@ jobs:
       - name: Run Simulation
         timeout-minutes: 2
         run: |
-          ELF=$(find artifacts/ -name 'app.elf' -o -name 'app' 2>/dev/null | head -1)
-          if [ -z "$ELF" ]; then
-            echo "No ELF artifact found (Phase 1-2 in progress). Simulation skipped."
+          # Find ELF binary (look for bin/app first, then app.elf)
+          if [ -f "artifacts/bin/app" ]; then
+            ELF="artifacts/bin/app"
+          elif [ -f "artifacts/app" ] && file artifacts/app | grep -q ELF; then
+            ELF="artifacts/app"
+          else
+            ELF=$(find artifacts/ -type f \( -name 'app.elf' -o -name 'app' \) 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$ELF" ] || [ ! -f "$ELF" ]; then
+            echo "No ELF artifact found. Simulation skipped."
+            ls -R artifacts/ || echo "No artifacts directory"
             exit 0
           fi
+          
           echo "Running QEMU simulation..."
           echo "ELF: ${ELF}"
+          file "$ELF"
+          
           timeout 60 qemu-system-riscv64 ${{ matrix.qemu_args }} \
             -kernel "${ELF}" > output.log 2>&1 || true
           echo "=== Simulation Output ==="
