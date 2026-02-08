@@ -83,21 +83,131 @@ endif()
 # Phase 2: Single-Core Tests (QEMU)
 # =============================================================================
 
-# These tests will be populated in Phase 2 when app/ is implemented
-# Template for future tests:
-#
-# if(TARGET app AND QEMU_SYSTEM_RISCV64)
-#     add_simulator_test(
-#         NAME phase2_qemu_hello
-#         PLATFORM qemu
-#         COMMAND ${QEMU_SYSTEM_RISCV64} -machine virt -nographic -bios none
-#                 -kernel $<TARGET_FILE:app>
-#         PASS_REGEX "Hello RISC-V"
-#         FAIL_REGEX "ERROR|FAIL|panic"
-#         TIMEOUT 30
-#         LABELS "phase2;qemu;smoke"
-#     )
-# endif()
+# Test 1: Boot and print "Hello RISC-V"
+if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    add_test(
+        NAME phase2_qemu_boot_hello
+        COMMAND ${QEMU_SYSTEM_RISCV64} 
+            -machine virt 
+            -nographic 
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase2_qemu_boot_hello PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL|panic"
+        TIMEOUT 30
+        LABELS "phase2;qemu;smoke"
+    )
+endif()
+
+# Test 2: CSR read - Hart ID
+if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    add_test(
+        NAME phase2_qemu_csr_hartid
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase2_qemu_csr_hartid PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[CSR\\] Hart ID: 0"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL|panic"
+        TIMEOUT 30
+        LABELS "phase2;qemu;csr"
+    )
+endif()
+
+# Test 3: CSR read - mstatus
+if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    add_test(
+        NAME phase2_qemu_csr_mstatus
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase2_qemu_csr_mstatus PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[CSR\\] mstatus:"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL|panic"
+        TIMEOUT 30
+        LABELS "phase2;qemu;csr"
+    )
+endif()
+
+# Test 4: UART character output
+if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    add_test(
+        NAME phase2_qemu_uart_output
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase2_qemu_uart_output PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[UART\\] Character output: PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL"
+        TIMEOUT 30
+        LABELS "phase2;qemu;uart"
+    )
+endif()
+
+# Test 5: Basic memory operations
+if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    add_test(
+        NAME phase2_qemu_memory_ops
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase2_qemu_memory_ops PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Memory operations: PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL"
+        TIMEOUT 30
+        LABELS "phase2;qemu;memory"
+    )
+endif()
+
+# Test 6: Function call stack
+if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    add_test(
+        NAME phase2_qemu_function_calls
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase2_qemu_function_calls PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Function calls: PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL"
+        TIMEOUT 30
+        LABELS "phase2;qemu;functional"
+    )
+endif()
+
+# Test 7: All Phase 2 tests complete
+if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    add_test(
+        NAME phase2_qemu_complete
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase2_qemu_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 2 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR|0/[0-9]+ PASS"
+        TIMEOUT 30
+        LABELS "phase2;qemu;integration"
+    )
+endif()
 
 # =============================================================================
 # Phase 3: Cross-Platform Tests (Spike)
