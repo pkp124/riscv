@@ -1,0 +1,118 @@
+# =============================================================================
+# CI Pipeline: gem5 Simulation (Heavy - runs on merge to main or manual)
+# =============================================================================
+# gem5 takes a long time to build (~30-60 min) and is slow to simulate.
+# This workflow runs only on:
+#   - Push to main branch
+#   - Manual trigger (workflow_dispatch)
+# =============================================================================
+
+name: CI - gem5 Simulation
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  workflow_dispatch:
+    inputs:
+      cpu_type:
+        description: 'gem5 CPU model'
+        required: true
+        default: 'AtomicSimpleCPU'
+        type: choice
+        options:
+          - AtomicSimpleCPU
+          - TimingSimpleCPU
+          - MinorCPU
+      num_cpus:
+        description: 'Number of CPUs'
+        required: true
+        default: '1'
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - '4'
+
+jobs:
+  gem5-simulate:
+    name: "gem5: ${{ github.event.inputs.cpu_type || 'AtomicSimpleCPU' }} x${{ github.event.inputs.num_cpus || '1' }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install RISC-V Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf
+
+      - name: Build ELF for gem5
+        run: |
+          if [ -f "app/Makefile" ]; then
+            cd app
+            make PLATFORM=gem5 CONFIG=single
+          else
+            echo "Makefile not yet created. Skipping."
+          fi
+
+      - name: Cache gem5 build
+        uses: actions/cache@v4
+        id: cache-gem5
+        with:
+          path: /opt/gem5/build/RISCV
+          key: gem5-riscv-${{ runner.os }}-v1
+
+      - name: Install gem5 dependencies
+        if: steps.cache-gem5.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install -y \
+            build-essential git m4 scons zlib1g zlib1g-dev \
+            libprotobuf-dev protobuf-compiler libprotoc-dev \
+            libgoogle-perftools-dev python3-dev \
+            libboost-all-dev pkg-config libhdf5-dev
+
+      - name: Build gem5
+        if: steps.cache-gem5.outputs.cache-hit != 'true'
+        timeout-minutes: 60
+        run: |
+          git clone --depth 1 https://github.com/gem5/gem5.git /opt/gem5
+          cd /opt/gem5
+          scons build/RISCV/gem5.opt -j$(nproc) --no-lto
+
+      - name: Run gem5 simulation
+        timeout-minutes: 10
+        run: |
+          ELF=$(find app/build/ -name 'app.elf' 2>/dev/null | head -1)
+          if [ -z "$ELF" ]; then
+            echo "No ELF found. Skipping simulation."
+            exit 0
+          fi
+
+          CPU_TYPE="${{ github.event.inputs.cpu_type || 'AtomicSimpleCPU' }}"
+          NUM_CPUS="${{ github.event.inputs.num_cpus || '1' }}"
+
+          echo "gem5 simulation: ${CPU_TYPE} x ${NUM_CPUS}"
+
+          if [ -f "platforms/gem5/configs/single_core.py" ]; then
+            /opt/gem5/build/RISCV/gem5.opt \
+              platforms/gem5/configs/single_core.py \
+              --cpu-type=${CPU_TYPE} \
+              --num-cpus=${NUM_CPUS} \
+              --cmd=${ELF}
+          else
+            echo "gem5 config scripts not yet created. Skipping."
+          fi
+
+      - name: Upload gem5 stats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem5-stats
+          path: m5out/
+          retention-days: 90
+        continue-on-error: true

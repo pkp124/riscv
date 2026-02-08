@@ -39,3 +39,30 @@
 
 # debug information files
 *.dwo
+
+# Build output
+build/
+app/build/
+
+# Simulation output
+m5out/
+output.log
+*.log
+
+# Editor files
+.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# cppcheck reports
+cppcheck-report.xml

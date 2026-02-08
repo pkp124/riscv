@@ -1,0 +1,60 @@
+{
+    "name": "RISC-V Bare-Metal Dev",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".",
+        "args": {
+            "SPIKE_COMMIT": "master"
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cpptools-extension-pack",
+                "ms-vscode.makefile-tools",
+                "zhwu95.riscv",
+                "webfreak.debug",
+                "marus25.cortex-debug",
+                "ms-vscode.hexeditor",
+                "streetsidesoftware.code-spell-checker",
+                "eamodio.gitlens",
+                "gruntfuggly.todo-tree",
+                "yzhang.markdown-all-in-one"
+            ],
+            "settings": {
+                "C_Cpp.default.compilerPath": "/usr/bin/riscv64-unknown-elf-gcc",
+                "C_Cpp.default.intelliSenseMode": "gcc-x64",
+                "C_Cpp.default.defines": [
+                    "PLATFORM_QEMU_VIRT",
+                    "ENABLE_SMP",
+                    "ENABLE_RVV"
+                ],
+                "C_Cpp.default.includePath": [
+                    "${workspaceFolder}/app/include"
+                ],
+                "files.associations": {
+                    "*.ld": "plaintext",
+                    "*.S": "asm",
+                    "*.repl": "plaintext"
+                },
+                "editor.formatOnSave": true,
+                "editor.rulers": [100],
+                "files.trimTrailingWhitespace": true,
+                "files.insertFinalNewline": true,
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        }
+    },
+    "postCreateCommand": "echo '=== RISC-V Dev Environment Ready ===' && riscv64-unknown-elf-gcc --version | head -1 && qemu-system-riscv64 --version | head -1",
+    "remoteUser": "root",
+    "mounts": [],
+    "runArgs": [
+        "--cap-add=SYS_PTRACE",
+        "--security-opt", "seccomp=unconfined"
+    ]
+}

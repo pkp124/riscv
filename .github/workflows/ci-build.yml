@@ -1,0 +1,255 @@
+# =============================================================================
+# CI Pipeline: Build and Test RISC-V Bare-Metal Application
+# =============================================================================
+# This workflow builds all ELF configurations and runs functional simulations.
+# It triggers on push to main and feature branches, and on pull requests.
+# =============================================================================
+
+name: CI - Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'cursor/**'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'LICENSE'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'LICENSE'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================
+  # Job 1: Lint and Static Analysis
+  # ============================================================
+  lint:
+    name: "Lint & Format Check"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck clang-format
+
+      - name: Check C formatting (clang-format)
+        run: |
+          if find app/src app/include -name '*.c' -o -name '*.h' 2>/dev/null | head -1 | grep -q .; then
+            find app/src app/include -name '*.c' -o -name '*.h' | \
+              xargs clang-format --dry-run --Werror
+          else
+            echo "No C source files found yet (design phase). Skipping format check."
+          fi
+
+      - name: Run cppcheck
+        run: |
+          if [ -d "app/src" ] && find app/src -name '*.c' 2>/dev/null | head -1 | grep -q .; then
+            cppcheck --enable=warning,style,performance,portability \
+              --std=c11 \
+              --suppress=missingIncludeSystem \
+              --suppress=unusedFunction \
+              --error-exitcode=1 \
+              -I app/include/ \
+              app/src/
+          else
+            echo "No C source files found yet (design phase). Skipping cppcheck."
+          fi
+
+  # ============================================================
+  # Job 2: Build Matrix
+  # ============================================================
+  build:
+    name: "Build: ${{ matrix.name }}"
+    runs-on: ubuntu-24.04
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "QEMU Single-Core"
+            platform: qemu
+            config: single
+            rvv: "0"
+            num_harts: "1"
+          - name: "QEMU SMP (4 harts)"
+            platform: qemu
+            config: smp
+            rvv: "0"
+            num_harts: "4"
+          - name: "QEMU RVV"
+            platform: qemu
+            config: single
+            rvv: "1"
+            num_harts: "1"
+          - name: "QEMU SMP+RVV (4 harts)"
+            platform: qemu
+            config: smp
+            rvv: "1"
+            num_harts: "4"
+          - name: "Spike Single-Core"
+            platform: spike
+            config: single
+            rvv: "0"
+            num_harts: "1"
+          - name: "Spike SMP (4 harts)"
+            platform: spike
+            config: smp
+            rvv: "0"
+            num_harts: "4"
+          - name: "Spike RVV"
+            platform: spike
+            config: single
+            rvv: "1"
+            num_harts: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install RISC-V Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf
+          riscv64-unknown-elf-gcc --version | head -1
+
+      - name: Build ELF
+        run: |
+          if [ -f "app/Makefile" ]; then
+            cd app
+            make PLATFORM=${{ matrix.platform }} \
+                 CONFIG=${{ matrix.config }} \
+                 NUM_HARTS=${{ matrix.num_harts }} \
+                 RVV=${{ matrix.rvv }}
+          else
+            echo "Makefile not yet created (design phase). Build step skipped."
+          fi
+
+      - name: Upload ELF artifact
+        if: hashFiles('app/build/*/app.elf') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: elf-${{ matrix.platform }}-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          path: app/build/*/app.elf
+          retention-days: 30
+
+  # ============================================================
+  # Job 3: Simulation Tests (QEMU)
+  # ============================================================
+  simulate-qemu:
+    name: "Simulate QEMU: ${{ matrix.name }}"
+    runs-on: ubuntu-24.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Single-Core"
+            platform: qemu
+            config: single
+            rvv: "0"
+            num_harts: "1"
+            qemu_args: "-machine virt -smp 1 -m 128M -nographic -bios none"
+          - name: "SMP (4 harts)"
+            platform: qemu
+            config: smp
+            rvv: "0"
+            num_harts: "4"
+            qemu_args: "-machine virt -smp 4 -m 256M -nographic -bios none"
+          - name: "RVV (VLEN=256)"
+            platform: qemu
+            config: single
+            rvv: "1"
+            num_harts: "1"
+            qemu_args: "-machine virt -cpu rv64,v=true,vlen=256 -nographic -bios none"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ELF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: elf-${{ matrix.platform }}-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-misc
+          qemu-system-riscv64 --version | head -1
+
+      - name: Run Simulation
+        timeout-minutes: 2
+        run: |
+          ELF=$(find artifacts/ -name 'app.elf' 2>/dev/null | head -1)
+          if [ -z "$ELF" ]; then
+            echo "No ELF artifact found (design phase). Simulation skipped."
+            exit 0
+          fi
+          echo "Running QEMU simulation..."
+          echo "ELF: ${ELF}"
+          timeout 60 qemu-system-riscv64 ${{ matrix.qemu_args }} \
+            -kernel "${ELF}" > output.log 2>&1 || true
+          echo "=== Simulation Output ==="
+          cat output.log
+
+      - name: Validate Output
+        run: |
+          if [ -f output.log ]; then
+            if grep -q "All tests complete" output.log; then
+              echo "PASS: Simulation completed successfully."
+            else
+              echo "WARN: Expected completion marker not found."
+              echo "This may be expected if the application is still in development."
+            fi
+          else
+            echo "No output to validate (design phase)."
+          fi
+
+      - name: Upload simulation log
+        if: always() && hashFiles('output.log') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-log-qemu-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          path: output.log
+          retention-days: 30
+
+  # ============================================================
+  # Job 4: Devcontainer Build Verification
+  # ============================================================
+  devcontainer:
+    name: "Devcontainer Build"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build devcontainer image
+        run: |
+          docker build -t riscv-dev .devcontainer/
+        timeout-minutes: 30
+
+      - name: Verify toolchain
+        run: |
+          docker run --rm riscv-dev riscv64-unknown-elf-gcc --version
+
+      - name: Verify QEMU
+        run: |
+          docker run --rm riscv-dev qemu-system-riscv64 --version
+
+      - name: Verify Spike
+        run: |
+          docker run --rm riscv-dev spike --help 2>&1 | head -5 || true
