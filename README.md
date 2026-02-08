@@ -15,17 +15,18 @@ A comprehensive, self-contained learning and development environment for RISC-V 
 
 ## Project Status
 
-**Current Phase: Phase 1 - Foundation & Build System** ✅ **COMPLETE**  
-**Next Phase: Phase 2 - Single-Core Bare-Metal (QEMU)**
+**Current Phase: Phase 2 - Single-Core Bare-Metal (QEMU)** ✅ **COMPLETE**  
+**Next Phase: Phase 3 - Cross-Platform Support (Spike)**
 
 ### Completed
 - ✅ Phase 0: Design & Setup (comprehensive documentation)
 - ✅ Phase 1: CMake build system, CTest framework, toolchain setup scripts, CI integration
+- ✅ Phase 2: Single-core bare-metal application (TDD approach, UART driver, CSR access, tests)
 
 ### In Progress
-- 🔨 Phase 2: Bare-metal application implementation (startup, UART, tests)
+- 🔨 Phase 3: Spike platform support (HTIF driver, cross-platform validation)
 
-> See [ROADMAP.md](ROADMAP.md) for detailed milestones and implementation plan.
+> See [ROADMAP.md](ROADMAP.md) for detailed milestones and [PHASE2_SUMMARY.md](PHASE2_SUMMARY.md) for Phase 2 details.
 
 ## Documentation
 
