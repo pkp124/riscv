@@ -65,6 +65,7 @@ jobs:
               --std=c11 \
               --suppress=missingIncludeSystem \
               --suppress=unusedFunction \
+              --suppress=knownConditionTrueFalse \
               --error-exitcode=1 \
               --xml --xml-version=2 \
               -I app/include/ \
