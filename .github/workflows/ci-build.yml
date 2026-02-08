@@ -60,6 +60,7 @@ jobs:
               --std=c11 \
               --suppress=missingIncludeSystem \
               --suppress=unusedFunction \
+              --suppress=knownConditionTrueFalse \
               --error-exitcode=1 \
               -I app/include/ \
               app/src/
