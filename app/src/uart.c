@@ -4,6 +4,9 @@
  *
  * Simple polled UART driver for QEMU virt machine, gem5, and Renode.
  * The NS16550A is a standard UART controller.
+ *
+ * Note: This file is only compiled for platforms with MMIO UART.
+ * Spike uses HTIF instead (will be implemented in Phase 3).
  */
 
 #include "uart.h"
@@ -12,6 +15,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
+/* Only compile for platforms that have UART */
+#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
 
 /* =============================================================================
  * NS16550A Register Offsets
@@ -131,3 +137,44 @@ bool uart_can_read(void)
 {
     return (UART_REG(UART_LSR_OFFSET) & UART_LSR_DR) != 0;
 }
+
+#else /* Spike or other platforms without UART */
+
+/* Stub implementations for platforms without UART (e.g., Spike uses HTIF) */
+void uart_init(void)
+{
+    /* No UART on this platform */
+}
+
+void uart_putc(char c)
+{
+    (void) c; /* Unused */
+    /* UART not available - use platform-specific I/O (HTIF for Spike) */
+}
+
+void uart_puts(const char *s)
+{
+    (void) s; /* Unused */
+    /* UART not available - use platform-specific I/O (HTIF for Spike) */
+}
+
+void uart_write(const char *buf, size_t len)
+{
+    (void) buf; /* Unused */
+    (void) len; /* Unused */
+    /* UART not available - use platform-specific I/O (HTIF for Spike) */
+}
+
+char uart_getc(void)
+{
+    /* UART not available */
+    return '\0';
+}
+
+bool uart_can_read(void)
+{
+    /* UART not available */
+    return false;
+}
+
+#endif /* PLATFORM_QEMU_VIRT || PLATFORM_GEM5 || PLATFORM_RENODE */
