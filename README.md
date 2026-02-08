@@ -4,32 +4,51 @@ A comprehensive, self-contained learning and development environment for RISC-V 
 
 ## Features
 
-- **Multi-platform**: Run the same bare-metal code on QEMU, Spike, and gem5
+- **Multi-platform**: Run the same bare-metal code on QEMU, Spike, gem5 (SE + FS), and Renode
 - **Single-core and multi-core (SMP)**: Configurable hart count (1 to 8+)
 - **RISC-V Vector Extension (RVV 1.0)**: Progressive vector workloads with VLEN-agnostic code
-- **Multi-processor (AMP)**: Heterogeneous configurations on gem5
+- **Multi-processor (AMP)**: Heterogeneous configurations on gem5 and Renode
+- **CMake + CTest**: Modern build system with presets and comprehensive testing
+- **Test-Driven Development**: TDD approach with automated validation
 - **Devcontainer**: Fully reproducible development environment
 - **CI/CD**: Automated builds, simulation runs, and validation
 
 ## Project Status
 
-**Phase: Design Proposals** -- See the `docs/` folder for detailed design documents.
+**Current Phase: Phase 1 - Foundation & Build System** ✅ **COMPLETE**  
+**Next Phase: Phase 2 - Single-Core Bare-Metal (QEMU)**
 
-> No application code has been written yet. The design documents are awaiting review and approval before implementation begins.
+### Completed
+- ✅ Phase 0: Design & Setup (comprehensive documentation)
+- ✅ Phase 1: CMake build system, CTest framework, toolchain setup scripts, CI integration
 
-## Design Documents
+### In Progress
+- 🔨 Phase 2: Bare-metal application implementation (startup, UART, tests)
+
+> See [ROADMAP.md](ROADMAP.md) for detailed milestones and implementation plan.
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [ROADMAP.md](ROADMAP.md) | **⭐ Implementation roadmap with phased milestones** |
+| [BUILD.md](BUILD.md) | **⭐ Build system setup and usage guide** |
+| [claude.md](claude.md) | AI assistant context and development guidelines |
+| [.cursorrules](.cursorrules) | Cursor-specific development rules |
+
+### Design Documents
 
 | Document | Description |
 |----------|-------------|
 | [00 - Project Overview](docs/00-project-overview.md) | High-level vision, goals, repository structure, and phased roadmap |
-| [01 - Platform Assessment](docs/01-platform-assessment.md) | Comprehensive evaluation of RISC-V simulation/emulation platforms (QEMU, Spike, gem5, Renode, TinyEMU, FireSim, etc.) |
+| [01 - Platform Assessment](docs/01-platform-assessment.md) | Comprehensive evaluation of RISC-V simulation/emulation platforms (QEMU, Spike, gem5, Renode, etc.) |
 | [02 - Bare-Metal Application](docs/02-baremetal-application.md) | Application architecture: boot sequence, HAL, UART/HTIF drivers, CSR access, and module design |
 | [03 - Platform Configurations](docs/03-platform-configurations.md) | Single-core, multi-core SMP, and multi-processor AMP configuration designs |
 | [04 - RVV Vector Extension](docs/04-rvv-vector-extension.md) | RVV 1.0 learning plan: concepts, instruction categories, progressive workloads, and LMUL exploration |
-| [05 - Build System](docs/05-build-system.md) | GNU Make build system, toolchain setup, compilation flags, and run targets |
+| [05 - Build System](docs/05-build-system.md) | Build system design (now implemented with CMake) |
 | [06 - CI/CD Pipeline](docs/06-ci-cd-pipeline.md) | GitHub Actions workflows for build, simulation, lint, and gem5 |
 
-## Quick Start (After Implementation)
+## Quick Start
 
 ### Prerequisites
 
@@ -40,50 +59,51 @@ Use the devcontainer (recommended) or install manually:
 # Just open the project -- the container has everything pre-installed.
 
 # Manual setup
-./scripts/setup-toolchain.sh    # Install RISC-V GCC
+./scripts/setup-toolchain.sh    # Install RISC-V GCC toolchain
 ./scripts/setup-simulators.sh   # Install QEMU + Spike
+
+# Verify environment
+./scripts/verify-environment.sh
 ```
 
-### Build
+### Build with CMake
 
 ```bash
-cd app
+# Configure with a preset (see CMakePresets.json)
+cmake --preset default          # QEMU single-core
 
-# Default: QEMU virt, single-core
-make
+# Build
+cmake --build build/default
 
-# QEMU with 4-hart SMP
-make PLATFORM=qemu CONFIG=smp NUM_HARTS=4
-
-# QEMU with RVV (Vector Extension)
-make PLATFORM=qemu CONFIG=single RVV=1
-
-# Build all configurations
-make all-platforms
+# Test (when Phase 2 is complete)
+ctest --test-dir build/default --output-on-failure
 ```
 
-### Run
+### Available Presets
 
 ```bash
-# Run on QEMU
-make run-qemu
+cmake --list-presets            # List all presets
 
-# Run on Spike
-make run-spike
-
-# Run on QEMU with GDB debugging
-make run-qemu-debug
-# Then in another terminal: riscv64-unknown-elf-gdb -ex "target remote :1234" build/qemu-single/app.elf
+# Common presets:
+cmake --preset default          # QEMU single-core
+cmake --preset qemu-smp         # QEMU 4-hart SMP
+cmake --preset qemu-rvv-256     # QEMU with RVV (VLEN=256)
+cmake --preset spike            # Spike ISA simulator
+cmake --preset gem5-fs          # gem5 Full System
+cmake --preset renode           # Renode
 ```
+
+See [BUILD.md](BUILD.md) for detailed build instructions.
 
 ## Supported Platforms
 
-| Platform | Type | RVV | Multi-Core | Cycle-Accurate | CI |
-|----------|------|-----|------------|----------------|-----|
-| **QEMU** | DBT Emulator | Yes | Yes (SMP) | No | Yes |
-| **Spike** | Functional ISA Sim | Yes | Yes (SMP) | No | Yes |
-| **gem5** | Micro-arch Sim | Partial | Yes (SMP+AMP) | Yes | On merge |
-| **Renode** | Functional Emulator | Limited | Yes (SMP+AMP) | No | Planned |
+| Platform | Type | RVV | Multi-Core | Cycle-Accurate | CI | Phase |
+|----------|------|-----|------------|----------------|-----|-------|
+| **QEMU** | DBT Emulator | Yes | Yes (SMP) | No | ✅ Yes | 2-5 |
+| **Spike** | Functional ISA Sim | Yes | Yes (SMP) | No | ✅ Yes | 3 |
+| **gem5 SE** | Micro-arch Sim (Syscall Emulation) | Partial | Yes (SMP) | Yes | On merge | 6 |
+| **gem5 FS** | Micro-arch Sim (Full System) | Partial | Yes (SMP+AMP) | Yes | On merge | 6 |
+| **Renode** | Functional Emulator | Limited | Yes (SMP+AMP) | No | Planned | 7 |
 
 ## Target ISA Configurations
 

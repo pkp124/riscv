@@ -1,0 +1,708 @@
+# Cursor AI Rules - RISC-V System Simulation Platform
+
+## Project Context
+
+This is a **bare-metal RISC-V simulation platform** project. We're building from design documents (Phase 0 complete) toward a working implementation.
+
+**Key Facts:**
+- Bare-metal C/Assembly (no OS, no stdlib)
+- Multi-platform: QEMU, Spike, gem5, Renode
+- Test-Driven Development (TDD) approach
+- CMake + CTest build system
+- Progressive complexity: single-core → SMP → RVV → AMP
+
+**Current Phase:** Phase 1 - Foundation & Build System  
+**See:** `ROADMAP.md` for detailed milestones  
+**Context:** `claude.md` for comprehensive project documentation
+
+---
+
+## Core Development Principles
+
+### 1. Test-Driven Development (TDD) - MANDATORY
+**Always write tests BEFORE implementation:**
+
+```cmake
+# Step 1: Write test FIRST
+add_test(NAME feature_test COMMAND ...)
+
+# Step 2: Run test (expect failure)
+# Step 3: Implement feature to pass test
+# Step 4: Refactor while keeping test passing
+```
+
+❌ **DO NOT** write implementation code without a corresponding test.  
+✅ **DO** follow Red-Green-Refactor cycle strictly.
+
+### 2. Bare-Metal Programming Rules
+
+#### Memory Management
+- ❌ NO `malloc()`, `free()`, or heap allocation
+- ✅ USE static allocation or stack-based arrays
+- ✅ IMPLEMENT custom `memset()`, `memcpy()` if needed
+
+#### I/O Operations
+- ❌ NO `printf()`, `scanf()`, `fopen()`, etc.
+- ✅ USE custom UART driver: `uart_puts()`, `uart_putc()`
+- ✅ IMPLEMENT platform abstraction for UART vs HTIF
+
+#### Standard Library
+- ❌ NO `#include <stdlib.h>`, `<stdio.h>`, `<string.h>`
+- ✅ ALLOWED: `<stdint.h>`, `<stddef.h>`, `<stdbool.h>` (compiler builtins)
+- ✅ IMPLEMENT own string/memory utilities
+
+#### Hardware Access
+- ✅ USE `volatile` for all MMIO registers
+- ✅ USE fixed-width types (`uint32_t`, not `int`)
+- ✅ USE inline assembly for CSR access
+
+### 3. Platform Abstraction
+Handle platform differences at compile-time:
+
+```c
+#if defined(PLATFORM_QEMU_VIRT)
+    #define UART_BASE 0x10000000
+    void uart_init(void);
+#elif defined(PLATFORM_SPIKE)
+    void htif_init(void);
+    #define uart_init htif_init
+#elif defined(PLATFORM_GEM5)
+    #define UART_BASE 0x10000000
+    void uart_init(void);
+#elif defined(PLATFORM_RENODE)
+    #define UART_BASE 0x10000000
+    void uart_init(void);
+#endif
+```
+
+### 4. Code Organization
+```
+app/
+├── src/
+│   ├── startup.S          # Assembly: boot, stack, BSS
+│   ├── main.c             # Application entry point
+│   ├── uart.c             # UART driver (QEMU/gem5/Renode)
+│   ├── htif.c             # HTIF driver (Spike)
+│   ├── platform.c         # Platform init
+│   ├── smp.c              # Multi-core support (Phase 4)
+│   └── rvv/               # Vector extension (Phase 5)
+├── include/
+│   ├── platform.h         # Platform abstraction
+│   ├── csr.h              # CSR access macros
+│   └── types.h            # Common type definitions
+└── linker/
+    ├── qemu-virt.ld       # QEMU linker script
+    ├── spike.ld           # Spike linker script
+    ├── gem5.ld            # gem5 linker script
+    └── renode.ld          # Renode linker script
+```
+
+---
+
+## Coding Standards
+
+### C Code Style
+
+#### Fixed-Width Types
+```c
+✅ uint32_t value = 0;
+✅ uint64_t address = 0x80000000ULL;
+❌ int value = 0;           // Ambiguous size
+❌ long address = 0x80000000; // Platform-dependent
+```
+
+#### MMIO Register Access
+```c
+✅ #define UART_THR (*(volatile uint8_t*)(UART_BASE + 0))
+✅ UART_THR = 'A';  // Write to hardware
+❌ uint8_t *thr = (uint8_t*)(UART_BASE);  // Missing volatile
+```
+
+#### CSR Access
+```c
+✅ // Use macros with inline assembly
+#define read_csr(reg) ({ \
+    unsigned long __tmp; \
+    asm volatile ("csrr %0, " #reg : "=r"(__tmp)); \
+    __tmp; })
+
+✅ uint64_t hartid = read_csr(mhartid);
+❌ // No C-level CSR access, must use inline asm
+```
+
+#### Function Declarations
+```c
+✅ void uart_init(void);           // Explicit void parameter
+✅ void uart_putc(char c);
+❌ void uart_init();               // Old-style, avoid
+```
+
+### Assembly Style
+
+#### Startup Code Template
+```assembly
+.section .text.start
+.global _start
+_start:
+    # 1. Clear BSS
+    la   t0, __bss_start
+    la   t1, __bss_end
+1:  bge  t0, t1, 2f
+    sd   zero, 0(t0)
+    addi t0, t0, 8
+    j    1b
+2:
+    # 2. Set stack pointer
+    la   sp, __stack_top
+    
+    # 3. Call main
+    call main
+    
+    # 4. Exit or loop
+    j    .
+```
+
+#### CSR Instructions
+```assembly
+csrr  t0, mhartid      # Read CSR to register
+csrw  mstatus, t1      # Write register to CSR
+csrrs t2, mstatus, t1  # Set bits (read and set)
+csrrc t3, mstatus, t1  # Clear bits (read and clear)
+```
+
+### CMake Style
+
+#### Test Definitions
+```cmake
+add_test(
+  NAME descriptive_test_name
+  COMMAND simulator_command ${TARGET_ELF}
+)
+
+set_tests_properties(descriptive_test_name PROPERTIES
+  PASS_REGULAR_EXPRESSION "Expected output pattern"
+  FAIL_REGULAR_EXPRESSION "ERROR|FAIL|panic"
+  TIMEOUT 60
+  LABELS "phase2;qemu;smoke"
+)
+```
+
+---
+
+## Build System Usage
+
+### CMake Presets (Primary Interface)
+```bash
+# List available presets
+cmake --list-presets
+
+# Configure with preset
+cmake --preset default        # QEMU single-core
+cmake --preset qemu-smp       # QEMU 4-hart SMP
+cmake --preset qemu-rvv       # QEMU with RVV
+cmake --preset spike          # Spike simulator
+cmake --preset gem5-se        # gem5 Syscall Emulation
+cmake --preset gem5-fs        # gem5 Full System
+cmake --preset renode         # Renode
+
+# Build
+cmake --build build/default
+
+# Test
+ctest --test-dir build/default --output-on-failure
+```
+
+### Custom Configuration (Advanced)
+```bash
+cmake -B build/custom \
+  -DPLATFORM=qemu \
+  -DCONFIG=smp \
+  -DNUM_HARTS=8 \
+  -DENABLE_RVV=ON \
+  -DCMAKE_BUILD_TYPE=Debug
+```
+
+---
+
+## Testing Guidelines
+
+### Test Naming Convention
+- Format: `{phase}_{feature}_{variant}`
+- Examples:
+  - `phase2_uart_hello`
+  - `phase3_spike_boot`
+  - `phase4_smp_4hart_sync`
+  - `phase5_rvv_vector_add`
+
+### Test Output Format
+Use structured logging for easy parsing:
+
+```c
+// In application code:
+uart_puts("[INFO] Starting tests\n");
+uart_puts("[TEST] UART write... PASS\n");
+uart_puts("[TEST] CSR read... PASS\n");
+uart_puts("[RESULT] 2/2 tests PASS\n");
+
+// In CTest:
+PASS_REGULAR_EXPRESSION "\\[RESULT\\].*2/2.*PASS"
+```
+
+### Test Categories (Labels)
+```cmake
+set_tests_properties(my_test PROPERTIES
+  LABELS "phase2;qemu;smoke;fast"
+)
+
+# Run subset:
+# ctest -L smoke         # Only smoke tests
+# ctest -L "qemu;phase2" # QEMU phase 2 tests
+```
+
+---
+
+## File Templates
+
+### C Source File Template
+```c
+/**
+ * @file filename.c
+ * @brief Brief description
+ * 
+ * Detailed description of module purpose and usage.
+ */
+
+#include "header.h"
+#include <stdint.h>
+
+// Platform-specific configuration
+#if defined(PLATFORM_QEMU_VIRT)
+    // QEMU-specific code
+#elif defined(PLATFORM_SPIKE)
+    // Spike-specific code
+#endif
+
+/**
+ * @brief Function description
+ * @param param Parameter description
+ * @return Return value description
+ */
+void function_name(uint32_t param) {
+    // Implementation
+}
+```
+
+### Header File Template
+```c
+/**
+ * @file filename.h
+ * @brief Brief description
+ */
+
+#ifndef FILENAME_H
+#define FILENAME_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+// Constants
+#define CONSTANT_NAME 0x12345
+
+// Type definitions
+typedef struct {
+    uint32_t field1;
+    uint64_t field2;
+} example_t;
+
+// Function declarations
+void function_name(uint32_t param);
+
+#endif // FILENAME_H
+```
+
+### CMake Test Template
+```cmake
+# Test: Brief description of what this tests
+add_test(
+  NAME phase2_feature_test
+  COMMAND qemu-system-riscv64
+    -machine virt
+    -nographic
+    -bios none
+    -kernel $<TARGET_FILE:app>
+)
+
+set_tests_properties(phase2_feature_test PROPERTIES
+  PASS_REGULAR_EXPRESSION "Expected success pattern"
+  FAIL_REGULAR_EXPRESSION "ERROR|FAIL"
+  TIMEOUT 30
+  LABELS "phase2;qemu;functional"
+)
+```
+
+---
+
+## Common Patterns
+
+### Implementing a New Driver
+
+1. **Write test first:**
+```cmake
+# tests/integration/test_timer.cmake
+add_test(NAME phase2_timer_basic ...)
+```
+
+2. **Create header:**
+```c
+// app/include/timer.h
+#ifndef TIMER_H
+#define TIMER_H
+void timer_init(void);
+uint64_t timer_get_ticks(void);
+#endif
+```
+
+3. **Implement driver:**
+```c
+// app/src/timer.c
+#include "timer.h"
+#include "csr.h"
+
+void timer_init(void) {
+    // Implementation
+}
+
+uint64_t timer_get_ticks(void) {
+    return read_csr(time);
+}
+```
+
+4. **Add to CMake:**
+```cmake
+# app/CMakeLists.txt
+target_sources(app PRIVATE src/timer.c)
+```
+
+5. **Run tests:**
+```bash
+cmake --build build/default
+ctest --test-dir build/default -R timer
+```
+
+### Adding Platform Support
+
+1. **Update platform abstraction:**
+```c
+// app/include/platform.h
+#if defined(PLATFORM_NEW)
+    #define UART_BASE 0xXXXXXXXX
+    #define RAM_BASE  0x80000000
+#endif
+```
+
+2. **Create linker script:**
+```ld
+/* app/linker/new-platform.ld */
+MEMORY {
+    RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 128M
+}
+/* ... */
+```
+
+3. **Add CMake preset:**
+```json
+// CMakePresets.json
+{
+  "name": "new-platform",
+  "inherits": "default",
+  "cacheVariables": {
+    "PLATFORM": "new-platform"
+  }
+}
+```
+
+4. **Add tests:**
+```cmake
+add_test(NAME new_platform_boot ...)
+```
+
+---
+
+## Debugging
+
+### QEMU with GDB
+```bash
+# Terminal 1:
+qemu-system-riscv64 -M virt -nographic -bios none \
+  -kernel app.elf -s -S
+
+# Terminal 2:
+riscv64-unknown-elf-gdb app.elf
+(gdb) target remote :1234
+(gdb) b main
+(gdb) c
+```
+
+### Spike Interactive Debug
+```bash
+spike -d --isa=rv64gc app.elf
+: until pc 0 0x80000000  # Run until address
+: reg 0 a0               # Read register
+: mem 0x80000000 8       # Read memory
+```
+
+### Disassembly
+```bash
+riscv64-unknown-elf-objdump -d -S app.elf > app.dump
+```
+
+---
+
+## Common Mistakes to Avoid
+
+### ❌ Mistake 1: Using Standard Library
+```c
+❌ printf("Hello\n");
+✅ uart_puts("Hello\n");
+
+❌ malloc(100);
+✅ static uint8_t buffer[100];
+
+❌ strlen(str);
+✅ size_t my_strlen(const char* s) { /* implement */ }
+```
+
+### ❌ Mistake 2: Forgetting Volatile
+```c
+❌ uint32_t *reg = (uint32_t*)0x10000000;
+    *reg = 0x42;  // May be optimized away!
+
+✅ volatile uint32_t *reg = (volatile uint32_t*)0x10000000;
+    *reg = 0x42;  // Forces hardware write
+```
+
+### ❌ Mistake 3: Not Clearing BSS
+```c
+// Linker script defines __bss_start and __bss_end
+// startup.S MUST clear BSS before calling main()
+
+✅ // In startup.S:
+    la   t0, __bss_start
+    la   t1, __bss_end
+1:  bge  t0, t1, 2f
+    sd   zero, 0(t0)
+    addi t0, t0, 8
+    j    1b
+2:  call main
+```
+
+### ❌ Mistake 4: Platform-Specific Hardcoding
+```c
+❌ #define UART_BASE 0x10000000  // Only works on QEMU!
+
+✅ #if defined(PLATFORM_QEMU_VIRT)
+    #define UART_BASE 0x10000000
+#elif defined(PLATFORM_SPIKE)
+    // Use HTIF instead
+#endif
+```
+
+---
+
+## Git Commit Message Style
+
+Follow Conventional Commits:
+
+```
+type(scope): Brief description
+
+Longer description if needed.
+
+- Bullet points for details
+- Test results
+- Breaking changes
+
+Refs: #issue-number
+```
+
+**Types:**
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `test:` - Add/update tests
+- `docs:` - Documentation
+- `build:` - Build system changes (CMake)
+- `ci:` - CI configuration
+- `refactor:` - Code refactoring
+
+**Examples:**
+```
+feat(uart): Add NS16550A UART driver for QEMU
+
+Implements basic UART driver with putc/puts functions.
+Passes test_uart_hello test on QEMU virt machine.
+
+- uart_init() - Initialize UART
+- uart_putc() - Write single character
+- uart_puts() - Write string
+
+Tests: phase2_uart_hello PASS
+```
+
+```
+test(smp): Add 4-hart SMP boot test
+
+Verifies all 4 harts boot successfully and print online message.
+
+Tests: phase4_smp_4hart_boot
+Platforms: QEMU, Spike
+```
+
+---
+
+## CI/CD Awareness
+
+### CI Runs On:
+- Push to main, feature/*, cursor/* branches
+- Pull requests
+- Manual trigger (workflow_dispatch)
+
+### CI Jobs:
+1. **Lint & Format**: clang-format, cppcheck
+2. **Build Matrix**: All presets (QEMU, Spike, gem5, Renode)
+3. **Simulation Tests**: CTest on QEMU and Spike
+4. **Devcontainer**: Verify Docker build
+
+### CI Expectations:
+- ✅ All tests pass
+- ✅ Code formatted (clang-format)
+- ✅ No lint warnings (cppcheck)
+- ✅ Build succeeds for all platforms
+- ✅ Simulations complete within timeout
+
+**Before pushing, run locally:**
+```bash
+# Format check
+find app -name '*.c' -o -name '*.h' | xargs clang-format -i
+
+# Build all presets
+cmake --preset default && cmake --build build/default
+cmake --preset spike && cmake --build build/spike
+
+# Run tests
+ctest --test-dir build/default --output-on-failure
+ctest --test-dir build/spike --output-on-failure
+```
+
+---
+
+## Phase-Specific Guidelines
+
+### Phase 1 (Current): Foundation & Build System
+**Focus:**
+- CMake structure and presets
+- CTest framework
+- Toolchain setup scripts
+- Build system documentation
+
+**Checklist:**
+- [ ] Root CMakeLists.txt
+- [ ] CMakePresets.json with 7+ presets
+- [ ] cmake/toolchain/riscv64-elf.cmake
+- [ ] tests/CMakeLists.txt
+- [ ] scripts/setup-toolchain.sh
+- [ ] scripts/setup-simulators.sh
+- [ ] CI updated to use CMake
+
+### Phase 2: Single-Core Bare-Metal (QEMU)
+**Focus:**
+- Minimal working application
+- UART driver
+- Basic tests
+
+**Test-First Tasks:**
+1. Write test: Boot and print "Hello"
+2. Implement: startup.S, main.c, uart.c
+3. Verify test passes
+4. Write test: CSR read
+5. Implement: csr.h macros
+6. Verify test passes
+
+### Phase 3: Cross-Platform (Spike)
+**Focus:**
+- HTIF driver for Spike
+- Platform abstraction
+- Cross-validation
+
+**Key Difference:**
+- Spike uses HTIF (not MMIO UART)
+- Implement htif.c alongside uart.c
+- Tests must pass on both QEMU and Spike
+
+---
+
+## Quick Reference
+
+### Memory Map (Common)
+| Region | Address | Size | Use |
+|--------|---------|------|-----|
+| RAM | 0x80000000 | 128MB+ | Code + Data + Stack |
+| UART | 0x10000000 | - | QEMU/gem5/Renode |
+| CLINT | 0x02000000 | - | Timer/IPI |
+
+### ISA Configurations
+- `rv64gc` = `rv64imafdc` - General purpose, 64-bit
+- `rv64gcv` = `rv64imafdcv` - With vector extension
+- ABI: `lp64d` (64-bit long/pointer, double-precision float)
+
+### Essential CSRs
+- `mhartid` - Hart ID (0, 1, 2, ...)
+- `mstatus` - Machine status register
+- `mtvec` - Trap vector base address
+- `mie` - Machine interrupt enable
+- `mip` - Machine interrupt pending
+- `time` - Timer (read-only)
+
+### Build Commands Cheat Sheet
+```bash
+# Quick build and test
+cmake --preset default && cmake --build build/default && ctest --test-dir build/default -V
+
+# All platforms
+for preset in default qemu-smp spike gem5-se; do
+  cmake --preset $preset && cmake --build build/$preset
+done
+
+# Run specific test
+ctest --test-dir build/default -R uart_hello -V
+```
+
+---
+
+## When You're Stuck
+
+1. **Check ROADMAP.md** - Are you in the right phase?
+2. **Read claude.md** - Comprehensive project documentation
+3. **Review design docs** - `docs/0X-*.md` for detailed specs
+4. **Look at CI logs** - GitHub Actions show what's failing
+5. **Test on QEMU first** - Fastest debug cycle
+6. **Use GDB** - Step through code to understand behavior
+7. **Check linker map** - `riscv64-unknown-elf-nm app.elf`
+
+---
+
+## Summary
+
+**Remember:**
+- 🧪 **TDD is mandatory** - Tests before code
+- 🔩 **Bare-metal constraints** - No stdlib, direct hardware
+- 🌐 **Cross-platform** - QEMU, Spike, gem5, Renode
+- 📐 **Follow the roadmap** - Progressive complexity
+- ✅ **CI must pass** - All platforms validated
+- 📚 **Document as you go** - Update docs with implementation
+
+**This project values correctness over speed. Quality tests and clean code are paramount.**
+
+---
+
+**Version:** 1.0  
+**Last Updated:** 2026-02-08
