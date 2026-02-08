@@ -18,8 +18,7 @@
 #include <stdint.h>
 
 /* Include platform-specific I/O */
-#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) ||                  \
-    defined(PLATFORM_RENODE)
+#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
 #include "uart.h"
 #define console_puts uart_puts
 #define console_putc uart_putc
