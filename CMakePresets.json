@@ -1,0 +1,314 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default (QEMU Single-Core)",
+      "description": "QEMU virt machine, single hart, no RVV",
+      "binaryDir": "${sourceDir}/build/default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PLATFORM": "qemu",
+        "CONFIG": "single",
+        "ENABLE_RVV": "OFF",
+        "NUM_HARTS": "1"
+      }
+    },
+    {
+      "name": "qemu-smp",
+      "inherits": "default",
+      "displayName": "QEMU SMP (4 harts)",
+      "description": "QEMU virt machine with 4-hart SMP configuration",
+      "binaryDir": "${sourceDir}/build/qemu-smp",
+      "cacheVariables": {
+        "CONFIG": "smp",
+        "NUM_HARTS": "4"
+      }
+    },
+    {
+      "name": "qemu-smp-8",
+      "inherits": "default",
+      "displayName": "QEMU SMP (8 harts)",
+      "description": "QEMU virt machine with 8-hart SMP configuration",
+      "binaryDir": "${sourceDir}/build/qemu-smp-8",
+      "cacheVariables": {
+        "CONFIG": "smp",
+        "NUM_HARTS": "8"
+      }
+    },
+    {
+      "name": "qemu-rvv",
+      "inherits": "default",
+      "displayName": "QEMU with RVV (VLEN=128)",
+      "description": "QEMU virt with RISC-V Vector Extension, VLEN=128",
+      "binaryDir": "${sourceDir}/build/qemu-rvv",
+      "cacheVariables": {
+        "ENABLE_RVV": "ON",
+        "VLEN": "128"
+      }
+    },
+    {
+      "name": "qemu-rvv-256",
+      "inherits": "default",
+      "displayName": "QEMU with RVV (VLEN=256)",
+      "description": "QEMU virt with RISC-V Vector Extension, VLEN=256",
+      "binaryDir": "${sourceDir}/build/qemu-rvv-256",
+      "cacheVariables": {
+        "ENABLE_RVV": "ON",
+        "VLEN": "256"
+      }
+    },
+    {
+      "name": "qemu-smp-rvv",
+      "inherits": "default",
+      "displayName": "QEMU SMP + RVV (4 harts, VLEN=256)",
+      "description": "QEMU virt with 4-hart SMP and RVV",
+      "binaryDir": "${sourceDir}/build/qemu-smp-rvv",
+      "cacheVariables": {
+        "CONFIG": "smp",
+        "NUM_HARTS": "4",
+        "ENABLE_RVV": "ON",
+        "VLEN": "256"
+      }
+    },
+    {
+      "name": "spike",
+      "inherits": "default",
+      "displayName": "Spike Single-Core",
+      "description": "Spike ISA simulator, single hart",
+      "binaryDir": "${sourceDir}/build/spike",
+      "cacheVariables": {
+        "PLATFORM": "spike"
+      }
+    },
+    {
+      "name": "spike-smp",
+      "inherits": "default",
+      "displayName": "Spike SMP (4 harts)",
+      "description": "Spike ISA simulator with 4-hart SMP",
+      "binaryDir": "${sourceDir}/build/spike-smp",
+      "cacheVariables": {
+        "PLATFORM": "spike",
+        "CONFIG": "smp",
+        "NUM_HARTS": "4"
+      }
+    },
+    {
+      "name": "spike-rvv",
+      "inherits": "default",
+      "displayName": "Spike with RVV (VLEN=256)",
+      "description": "Spike ISA simulator with RVV 1.0",
+      "binaryDir": "${sourceDir}/build/spike-rvv",
+      "cacheVariables": {
+        "PLATFORM": "spike",
+        "ENABLE_RVV": "ON",
+        "VLEN": "256"
+      }
+    },
+    {
+      "name": "gem5-se",
+      "inherits": "default",
+      "displayName": "gem5 Syscall Emulation (SE)",
+      "description": "gem5 in syscall emulation mode (simpler, faster)",
+      "binaryDir": "${sourceDir}/build/gem5-se",
+      "cacheVariables": {
+        "PLATFORM": "gem5",
+        "GEM5_MODE": "se"
+      }
+    },
+    {
+      "name": "gem5-fs",
+      "inherits": "default",
+      "displayName": "gem5 Full System (FS)",
+      "description": "gem5 in full system mode (realistic, bare-metal)",
+      "binaryDir": "${sourceDir}/build/gem5-fs",
+      "cacheVariables": {
+        "PLATFORM": "gem5",
+        "GEM5_MODE": "fs"
+      }
+    },
+    {
+      "name": "gem5-fs-smp",
+      "inherits": "default",
+      "displayName": "gem5 Full System SMP (4 harts)",
+      "description": "gem5 full system with 4-hart SMP",
+      "binaryDir": "${sourceDir}/build/gem5-fs-smp",
+      "cacheVariables": {
+        "PLATFORM": "gem5",
+        "GEM5_MODE": "fs",
+        "CONFIG": "smp",
+        "NUM_HARTS": "4"
+      }
+    },
+    {
+      "name": "renode",
+      "inherits": "default",
+      "displayName": "Renode",
+      "description": "Renode SoC simulator",
+      "binaryDir": "${sourceDir}/build/renode",
+      "cacheVariables": {
+        "PLATFORM": "renode"
+      }
+    },
+    {
+      "name": "renode-smp",
+      "inherits": "default",
+      "displayName": "Renode SMP (4 harts)",
+      "description": "Renode with 4-hart SMP configuration",
+      "binaryDir": "${sourceDir}/build/renode-smp",
+      "cacheVariables": {
+        "PLATFORM": "renode",
+        "CONFIG": "smp",
+        "NUM_HARTS": "4"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "default",
+      "displayName": "Release Build (QEMU)",
+      "description": "Optimized release build for QEMU",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "minsize",
+      "inherits": "default",
+      "displayName": "Minimum Size Build (QEMU)",
+      "description": "Size-optimized build for QEMU",
+      "binaryDir": "${sourceDir}/build/minsize",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "displayName": "Build Default",
+      "description": "Build with default configuration"
+    },
+    {
+      "name": "qemu-smp",
+      "configurePreset": "qemu-smp",
+      "displayName": "Build QEMU SMP"
+    },
+    {
+      "name": "qemu-rvv",
+      "configurePreset": "qemu-rvv",
+      "displayName": "Build QEMU RVV"
+    },
+    {
+      "name": "spike",
+      "configurePreset": "spike",
+      "displayName": "Build Spike"
+    },
+    {
+      "name": "gem5-se",
+      "configurePreset": "gem5-se",
+      "displayName": "Build gem5 SE"
+    },
+    {
+      "name": "gem5-fs",
+      "configurePreset": "gem5-fs",
+      "displayName": "Build gem5 FS"
+    },
+    {
+      "name": "renode",
+      "configurePreset": "renode",
+      "displayName": "Build Renode"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "displayName": "Build Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "displayName": "Test Default",
+      "description": "Run all tests for default configuration",
+      "output": {
+        "outputOnFailure": true,
+        "verbosity": "default"
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "qemu-smp",
+      "configurePreset": "qemu-smp",
+      "displayName": "Test QEMU SMP",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "qemu-rvv",
+      "configurePreset": "qemu-rvv",
+      "displayName": "Test QEMU RVV",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "spike",
+      "configurePreset": "spike",
+      "displayName": "Test Spike",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "gem5-se",
+      "configurePreset": "gem5-se",
+      "displayName": "Test gem5 SE",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "gem5-fs",
+      "configurePreset": "gem5-fs",
+      "displayName": "Test gem5 FS",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "all",
+      "configurePreset": "default",
+      "displayName": "Run All Tests",
+      "description": "Run all available tests with verbose output",
+      "output": {
+        "outputOnFailure": true,
+        "verbosity": "verbose"
+      }
+    },
+    {
+      "name": "smoke",
+      "configurePreset": "default",
+      "displayName": "Smoke Tests Only",
+      "description": "Run quick smoke tests",
+      "filter": {
+        "include": {
+          "label": "smoke"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
