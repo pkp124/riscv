@@ -51,13 +51,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf
 
+      - name: Configure with CMake
+        run: |
+          cmake --version
+          cmake --preset gem5-fs || echo "gem5-fs preset not ready yet (Phase 1-5 in progress)"
+      
       - name: Build ELF for gem5
         run: |
-          if [ -f "app/Makefile" ]; then
-            cd app
-            make PLATFORM=gem5 CONFIG=single
+          if [ -f "build/gem5-fs/CMakeCache.txt" ]; then
+            cmake --build build/gem5-fs
           else
-            echo "Makefile not yet created. Skipping."
+            echo "CMake build not yet ready. Skipping."
           fi
 
       - name: Cache gem5 build
@@ -87,9 +91,9 @@ jobs:
       - name: Run gem5 simulation
         timeout-minutes: 10
         run: |
-          ELF=$(find app/build/ -name 'app.elf' 2>/dev/null | head -1)
+          ELF=$(find build/ -name 'app.elf' -o -name 'app' 2>/dev/null | head -1)
           if [ -z "$ELF" ]; then
-            echo "No ELF found. Skipping simulation."
+            echo "No ELF found. Skipping simulation (Phase 1-5 in progress)."
             exit 0
           fi
 
@@ -98,14 +102,14 @@ jobs:
 
           echo "gem5 simulation: ${CPU_TYPE} x ${NUM_CPUS}"
 
-          if [ -f "platforms/gem5/configs/single_core.py" ]; then
+          if [ -f "platforms/gem5/configs/fs_config.py" ]; then
             /opt/gem5/build/RISCV/gem5.opt \
-              platforms/gem5/configs/single_core.py \
+              platforms/gem5/configs/fs_config.py \
               --cpu-type=${CPU_TYPE} \
               --num-cpus=${NUM_CPUS} \
               --cmd=${ELF}
           else
-            echo "gem5 config scripts not yet created. Skipping."
+            echo "gem5 config scripts not yet created (Phase 6). Skipping."
           fi
 
       - name: Upload gem5 stats
