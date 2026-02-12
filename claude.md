@@ -15,24 +15,35 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 
 ## Current Project Status
 
-**Phase:** Phase 0 (Design & Setup) - **COMPLETE**  
-**Next Phase:** Phase 1 (Foundation & Build System)  
+**Completed:** Phase 0 (Design), Phase 1 (Build System), Phase 2 (Single-Core QEMU)  
+**Current Phase:** Phase 3 (Cross-Platform Support - Spike) — IN PROGRESS  
+**Last Updated:** 2026-02-12  
 
 ### What Exists
-✅ Comprehensive design documents (docs/00-*.md)  
+✅ Comprehensive design documents (docs/00-06)  
 ✅ Devcontainer configuration (.devcontainer/)  
-✅ CI pipeline skeleton (GitHub Actions)  
-✅ Project README and roadmap (ROADMAP.md)  
-✅ Design-phase documentation complete  
+✅ Full CI pipeline (GitHub Actions: lint, build matrix, QEMU simulations)  
+✅ CMake build system with 10+ presets (CMakeLists.txt, CMakePresets.json)  
+✅ RISC-V toolchain file (cmake/toolchain/riscv64-elf.cmake)  
+✅ CTest framework with 7 passing Phase 2 tests  
+✅ Application source code (app/src/startup.S, main.c, uart.c, htif.c, platform.c)  
+✅ Platform headers (app/include/platform.h, csr.h, uart.h, htif.h)  
+✅ Linker scripts (app/linker/qemu-virt.ld, spike.ld)  
+✅ Setup scripts (setup-toolchain.sh, setup-simulators.sh, verify-environment.sh)  
+✅ Build documentation (BUILD.md)  
+
+### What's In Progress (Phase 3)
+🔨 Spike simulation tests in CI  
+🔨 CTest test cases for Spike platform  
+🔨 Cross-validation between QEMU and Spike outputs  
 
 ### What Doesn't Exist Yet
-❌ Application source code (app/src/)  
-❌ CMake build system (CMakeLists.txt)  
-❌ Tests (tests/)  
-❌ Platform configurations (platforms/)  
-❌ Linker scripts (app/linker/)  
-
-**This is a greenfield implementation project.** We are building from design documents.
+❌ Spike simulation runs in CI (builds work, simulations not yet)  
+❌ SMP support code (Phase 4)  
+❌ RVV workloads (Phase 5)  
+❌ gem5 platform support (Phase 6)  
+❌ Renode platform support (Phase 7)  
+❌ Platform launch configs (platforms/)
 
 ---
 
