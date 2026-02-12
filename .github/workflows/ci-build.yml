@@ -390,7 +390,7 @@ jobs:
             config: single
             rvv: "1"
             num_harts: "1"
-            spike_args: "--isa=rv64gcv --varch=vlen:256,elen:64"
+            spike_args: "--isa=rv64gcv"
 
     steps:
       - name: Checkout

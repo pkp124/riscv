@@ -101,10 +101,8 @@ function(add_spike_run_target TARGET_NAME ELF_TARGET)
         list(APPEND SPIKE_ARGS -p${NUM_HARTS})
     endif()
     
-    # Add RVV varch configuration
-    if(ENABLE_RVV)
-        list(APPEND SPIKE_ARGS --varch=vlen:${VLEN},elen:64)
-    endif()
+    # Note: RVV VLEN configuration via --varch was removed in newer Spike versions.
+    # The --isa=rv64gcv flag alone enables RVV with default VLEN.
     
     # Add ELF
     list(APPEND SPIKE_ARGS $<TARGET_FILE:${ELF_TARGET}>)
