@@ -9,12 +9,14 @@
 
 name: CI - gem5 Simulation
 
+# =============================================================================
+# gem5 integration is Phase 6. This workflow is a placeholder that will be
+# fully implemented when gem5 platform support is added.
+#
+# Currently runs only on manual dispatch to avoid failing on every push.
+# =============================================================================
+
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
   workflow_dispatch:
     inputs:
       cpu_type:
@@ -46,25 +48,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Phase 6 readiness
+        id: check-ready
+        run: |
+          if [ -f "platforms/gem5/configs/fs_config.py" ]; then
+            echo "ready=true" >> $GITHUB_OUTPUT
+            echo "gem5 config found. Proceeding with simulation."
+          else
+            echo "ready=false" >> $GITHUB_OUTPUT
+            echo "gem5 config scripts not yet created (Phase 6)."
+            echo "This workflow will be fully enabled when Phase 6 is implemented."
+          fi
+
       - name: Install RISC-V Toolchain
+        if: steps.check-ready.outputs.ready == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf
 
       - name: Configure with CMake
+        if: steps.check-ready.outputs.ready == 'true'
         run: |
           cmake --version
-          cmake --preset gem5-fs || echo "gem5-fs preset not ready yet (Phase 1-5 in progress)"
+          cmake --preset gem5-fs
       
       - name: Build ELF for gem5
+        if: steps.check-ready.outputs.ready == 'true'
         run: |
-          if [ -f "build/gem5-fs/CMakeCache.txt" ]; then
-            cmake --build build/gem5-fs
-          else
-            echo "CMake build not yet ready. Skipping."
-          fi
+          cmake --build build/gem5-fs
 
       - name: Cache gem5 build
+        if: steps.check-ready.outputs.ready == 'true'
         uses: actions/cache@v4
         id: cache-gem5
         with:
@@ -72,7 +86,7 @@ jobs:
           key: gem5-riscv-${{ runner.os }}-v1
 
       - name: Install gem5 dependencies
-        if: steps.cache-gem5.outputs.cache-hit != 'true'
+        if: steps.check-ready.outputs.ready == 'true' && steps.cache-gem5.outputs.cache-hit != 'true'
         run: |
           sudo apt-get install -y \
             build-essential git m4 scons zlib1g zlib1g-dev \
@@ -81,7 +95,7 @@ jobs:
             libboost-all-dev pkg-config libhdf5-dev
 
       - name: Build gem5
-        if: steps.cache-gem5.outputs.cache-hit != 'true'
+        if: steps.check-ready.outputs.ready == 'true' && steps.cache-gem5.outputs.cache-hit != 'true'
         timeout-minutes: 60
         run: |
           git clone --depth 1 https://github.com/gem5/gem5.git /opt/gem5
@@ -89,11 +103,12 @@ jobs:
           scons build/RISCV/gem5.opt -j$(nproc) --no-lto
 
       - name: Run gem5 simulation
+        if: steps.check-ready.outputs.ready == 'true'
         timeout-minutes: 10
         run: |
           ELF=$(find build/ -name 'app.elf' -o -name 'app' 2>/dev/null | head -1)
           if [ -z "$ELF" ]; then
-            echo "No ELF found. Skipping simulation (Phase 1-5 in progress)."
+            echo "No ELF found. Skipping simulation."
             exit 0
           fi
 
@@ -102,18 +117,14 @@ jobs:
 
           echo "gem5 simulation: ${CPU_TYPE} x ${NUM_CPUS}"
 
-          if [ -f "platforms/gem5/configs/fs_config.py" ]; then
-            /opt/gem5/build/RISCV/gem5.opt \
-              platforms/gem5/configs/fs_config.py \
-              --cpu-type=${CPU_TYPE} \
-              --num-cpus=${NUM_CPUS} \
-              --cmd=${ELF}
-          else
-            echo "gem5 config scripts not yet created (Phase 6). Skipping."
-          fi
+          /opt/gem5/build/RISCV/gem5.opt \
+            platforms/gem5/configs/fs_config.py \
+            --cpu-type=${CPU_TYPE} \
+            --num-cpus=${NUM_CPUS} \
+            --cmd=${ELF}
 
       - name: Upload gem5 stats
-        if: always()
+        if: always() && steps.check-ready.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: gem5-stats
