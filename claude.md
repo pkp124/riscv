@@ -15,30 +15,24 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 
 ## Current Project Status
 
-**Completed:** Phase 0 (Design), Phase 1 (Build System), Phase 2 (Single-Core QEMU)  
-**Current Phase:** Phase 3 (Cross-Platform Support - Spike) — IN PROGRESS  
+**Completed:** Phase 0 (Design), Phase 1 (Build System), Phase 2 (QEMU), Phase 3 (Spike)  
+**Next Phase:** Phase 4 (Multi-Core SMP Support)  
 **Last Updated:** 2026-02-12  
 
 ### What Exists
 ✅ Comprehensive design documents (docs/00-06)  
 ✅ Devcontainer configuration (.devcontainer/)  
-✅ Full CI pipeline (GitHub Actions: lint, build matrix, QEMU simulations)  
+✅ Full CI pipeline (lint, build matrix, QEMU + Spike simulations, cross-validation)  
 ✅ CMake build system with 10+ presets (CMakeLists.txt, CMakePresets.json)  
 ✅ RISC-V toolchain file (cmake/toolchain/riscv64-elf.cmake)  
-✅ CTest framework with 7 passing Phase 2 tests  
-✅ Application source code (app/src/startup.S, main.c, uart.c, htif.c, platform.c)  
-✅ Platform headers (app/include/platform.h, csr.h, uart.h, htif.h)  
-✅ Linker scripts (app/linker/qemu-virt.ld, spike.ld)  
+✅ CTest: 7 QEMU tests + 8 Spike tests, all passing  
+✅ Application source (startup.S, main.c, uart.c, htif.c, platform.c)  
+✅ Platform headers (platform.h, csr.h, uart.h, htif.h)  
+✅ Linker scripts (qemu-virt.ld, spike.ld) with clean exit support  
 ✅ Setup scripts (setup-toolchain.sh, setup-simulators.sh, verify-environment.sh)  
-✅ Build documentation (BUILD.md)  
-
-### What's In Progress (Phase 3)
-🔨 Spike simulation tests in CI  
-🔨 CTest test cases for Spike platform  
-🔨 Cross-validation between QEMU and Spike outputs  
+✅ Cross-platform validation (QEMU vs Spike output functionally identical)  
 
 ### What Doesn't Exist Yet
-❌ Spike simulation runs in CI (builds work, simulations not yet)  
 ❌ SMP support code (Phase 4)  
 ❌ RVV workloads (Phase 5)  
 ❌ gem5 platform support (Phase 6)  

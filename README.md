@@ -15,16 +15,17 @@ A comprehensive, self-contained learning and development environment for RISC-V 
 
 ## Project Status
 
-**Current Phase: Phase 3 - Cross-Platform Support (Spike)** 🔨  
-**Last Completed: Phase 2 - Single-Core Bare-Metal (QEMU)** ✅
+**Current Phase: Phase 3 - Cross-Platform Support (Spike)** ✅ **COMPLETE**  
+**Next Phase: Phase 4 - Multi-Core SMP Support**
 
 ### Completed
 - ✅ Phase 0: Design & Setup (comprehensive documentation)
 - ✅ Phase 1: CMake build system, CTest framework, toolchain setup scripts, CI integration
 - ✅ Phase 2: Single-core bare-metal application (TDD, UART driver, CSR access, 7 tests, CI green)
+- ✅ Phase 3: Spike cross-platform support (HTIF driver, 8 Spike tests, CI simulation, cross-validation)
 
-### In Progress
-- 🔨 Phase 3: Spike platform support (HTIF driver done, Spike simulation tests + cross-validation remaining)
+### Up Next
+- 🔜 Phase 4: Multi-Core SMP support (2-8 harts, spinlocks, barriers)
 
 > See [ROADMAP.md](ROADMAP.md) for detailed milestones and [PHASE2_SUMMARY.md](PHASE2_SUMMARY.md) for Phase 2 details.
 
