@@ -271,15 +271,48 @@ jobs:
 
       - name: Validate Output
         run: |
-          if [ -f output.log ]; then
-            if grep -q "All tests complete" output.log; then
-              echo "PASS: Simulation completed successfully."
-            else
-              echo "WARN: Expected completion marker not found."
-              echo "This may be expected if the application is still in development."
-            fi
+          if [ ! -f output.log ]; then
+            echo "No output to validate."
+            exit 0
+          fi
+
+          PASS=true
+
+          if grep -q "Hello RISC-V" output.log; then
+            echo "PASS: Found 'Hello RISC-V'"
           else
-            echo "No output to validate (design phase)."
+            echo "FAIL: Missing 'Hello RISC-V'"
+            PASS=false
+          fi
+
+          if grep -q "Platform: QEMU virt" output.log; then
+            echo "PASS: Platform correctly identified as QEMU"
+          else
+            echo "FAIL: Platform not identified as QEMU"
+            PASS=false
+          fi
+
+          if grep -q "\[RESULT\].*PASS" output.log; then
+            echo "PASS: Test results show PASS"
+          else
+            echo "FAIL: Test results missing or show failure"
+            PASS=false
+          fi
+
+          if grep -q "Phase 2 complete" output.log; then
+            echo "PASS: Application completed successfully"
+          else
+            echo "FAIL: Application did not complete"
+            PASS=false
+          fi
+
+          if [ "$PASS" = "true" ]; then
+            echo ""
+            echo "=== ALL QEMU VALIDATION CHECKS PASSED ==="
+          else
+            echo ""
+            echo "=== SOME QEMU VALIDATION CHECKS FAILED ==="
+            exit 1
           fi
 
       - name: Upload simulation log
@@ -291,7 +324,220 @@ jobs:
           retention-days: 30
 
   # ============================================================
-  # Job 4: Devcontainer Build Verification
+  # Job 4: Simulation Tests (Spike)
+  # ============================================================
+  simulate-spike:
+    name: "Simulate Spike: ${{ matrix.name }}"
+    runs-on: ubuntu-24.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Single-Core"
+            platform: spike
+            config: single
+            rvv: "0"
+            spike_args: "--isa=rv64gc"
+          - name: "RVV (VLEN=256)"
+            platform: spike
+            config: single
+            rvv: "1"
+            spike_args: "--isa=rv64gcv --varch=vlen:256,elen:64"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ELF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: elf-${{ matrix.platform }}-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Cache Spike build
+        uses: actions/cache@v4
+        id: cache-spike
+        with:
+          path: /usr/local/bin/spike
+          key: spike-${{ runner.os }}-v1
+
+      - name: Install Spike dependencies
+        if: steps.cache-spike.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y device-tree-compiler libboost-regex-dev libboost-system-dev
+
+      - name: Build and install Spike
+        if: steps.cache-spike.outputs.cache-hit != 'true'
+        timeout-minutes: 15
+        run: |
+          git clone --depth 1 https://github.com/riscv-software-src/riscv-isa-sim.git /tmp/spike-src
+          cd /tmp/spike-src
+          mkdir build && cd build
+          ../configure --prefix=/usr/local
+          make -j$(nproc)
+          sudo make install
+          spike --help 2>&1 | head -1
+
+      - name: Verify Spike
+        run: |
+          spike --help 2>&1 | head -1 || echo "Spike not available"
+
+      - name: Run Spike Simulation
+        timeout-minutes: 2
+        run: |
+          # Find ELF binary
+          if [ -f "artifacts/bin/app" ]; then
+            ELF="artifacts/bin/app"
+          else
+            ELF=$(find artifacts/ -type f -name 'app' 2>/dev/null | head -1)
+          fi
+
+          if [ -z "$ELF" ] || [ ! -f "$ELF" ]; then
+            echo "No ELF artifact found. Simulation skipped."
+            ls -R artifacts/ || echo "No artifacts directory"
+            exit 0
+          fi
+
+          echo "Running Spike simulation..."
+          echo "ELF: ${ELF}"
+          file "$ELF"
+
+          spike ${{ matrix.spike_args }} "${ELF}" > output.log 2>&1
+          SPIKE_EXIT=$?
+          echo "=== Simulation Output ==="
+          cat output.log
+          echo "=== Exit Code: ${SPIKE_EXIT} ==="
+
+      - name: Validate Output
+        run: |
+          if [ ! -f output.log ]; then
+            echo "No output to validate."
+            exit 0
+          fi
+
+          PASS=true
+
+          # Check for expected output patterns
+          if grep -q "Hello RISC-V" output.log; then
+            echo "PASS: Found 'Hello RISC-V'"
+          else
+            echo "FAIL: Missing 'Hello RISC-V'"
+            PASS=false
+          fi
+
+          if grep -q "Platform: Spike" output.log; then
+            echo "PASS: Platform correctly identified as Spike"
+          else
+            echo "FAIL: Platform not identified as Spike"
+            PASS=false
+          fi
+
+          if grep -q "\[RESULT\].*PASS" output.log; then
+            echo "PASS: Test results show PASS"
+          else
+            echo "FAIL: Test results missing or show failure"
+            PASS=false
+          fi
+
+          if grep -q "Phase 2 complete" output.log; then
+            echo "PASS: Application completed successfully"
+          else
+            echo "FAIL: Application did not complete"
+            PASS=false
+          fi
+
+          if [ "$PASS" = "true" ]; then
+            echo ""
+            echo "=== ALL SPIKE VALIDATION CHECKS PASSED ==="
+          else
+            echo ""
+            echo "=== SOME SPIKE VALIDATION CHECKS FAILED ==="
+            exit 1
+          fi
+
+      - name: Upload simulation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-log-spike-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          path: output.log
+          retention-days: 30
+          if-no-files-found: warn
+
+  # ============================================================
+  # Job 5: Cross-Platform Validation (QEMU vs Spike)
+  # ============================================================
+  cross-validate:
+    name: "Cross-Validate: QEMU vs Spike"
+    runs-on: ubuntu-24.04
+    needs: [simulate-qemu, simulate-spike]
+    if: always()
+    steps:
+      - name: Download QEMU simulation log
+        uses: actions/download-artifact@v4
+        with:
+          name: sim-log-qemu-single-rvv0
+          path: qemu-logs/
+        continue-on-error: true
+
+      - name: Download Spike simulation log
+        uses: actions/download-artifact@v4
+        with:
+          name: sim-log-spike-single-rvv0
+          path: spike-logs/
+        continue-on-error: true
+
+      - name: Compare outputs
+        run: |
+          echo "=== Cross-Platform Validation ==="
+          echo ""
+
+          QEMU_LOG="qemu-logs/output.log"
+          SPIKE_LOG="spike-logs/output.log"
+
+          if [ ! -f "$QEMU_LOG" ] || [ ! -f "$SPIKE_LOG" ]; then
+            echo "Missing simulation logs. Skipping cross-validation."
+            [ ! -f "$QEMU_LOG" ] && echo "  Missing: QEMU log"
+            [ ! -f "$SPIKE_LOG" ] && echo "  Missing: Spike log"
+            exit 0
+          fi
+
+          echo "--- QEMU Output ---"
+          cat "$QEMU_LOG"
+          echo ""
+          echo "--- Spike Output ---"
+          cat "$SPIKE_LOG"
+          echo ""
+
+          # Extract test-relevant lines, strip \r (UART uses \r\n, HTIF uses \n)
+          grep -E "^\[TEST\]|^\[RESULT\]|^\[CSR\]|^\[INFO\]|^Hello" "$QEMU_LOG" | \
+            tr -d '\r' | sed 's/Platform: .*/Platform: <platform>/' > qemu-normalized.txt
+          grep -E "^\[TEST\]|^\[RESULT\]|^\[CSR\]|^\[INFO\]|^Hello" "$SPIKE_LOG" | \
+            tr -d '\r' | sed 's/Platform: .*/Platform: <platform>/' > spike-normalized.txt
+
+          echo "--- Normalized QEMU ---"
+          cat qemu-normalized.txt
+          echo ""
+          echo "--- Normalized Spike ---"
+          cat spike-normalized.txt
+          echo ""
+
+          if diff -u qemu-normalized.txt spike-normalized.txt; then
+            echo ""
+            echo "=== CROSS-VALIDATION PASSED ==="
+            echo "QEMU and Spike produce functionally equivalent output."
+          else
+            echo ""
+            echo "=== CROSS-VALIDATION: DIFFERENCES FOUND ==="
+            echo "Note: Minor differences may be expected (e.g., CSR values)."
+            echo "Review the diff above to determine if differences are acceptable."
+          fi
+
+  # ============================================================
+  # Job 6: Devcontainer Build Verification
   # ============================================================
   devcontainer:
     name: "Devcontainer Build"
