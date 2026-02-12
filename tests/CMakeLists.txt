@@ -83,8 +83,10 @@ endif()
 # Phase 2: Single-Core Tests (QEMU)
 # =============================================================================
 
-# Test 1: Boot and print "Hello RISC-V"
-if(TARGET app AND QEMU_SYSTEM_RISCV64)
+# Phase 2 QEMU tests: Only for single-core builds (NUM_HARTS == 1)
+if(TARGET app AND QEMU_SYSTEM_RISCV64 AND NUM_HARTS EQUAL 1)
+
+    # Test 1: Boot and print "Hello RISC-V"
     add_test(
         NAME phase2_qemu_boot_hello
         COMMAND ${QEMU_SYSTEM_RISCV64} 
@@ -99,10 +101,8 @@ if(TARGET app AND QEMU_SYSTEM_RISCV64)
         TIMEOUT 30
         LABELS "phase2;qemu;smoke"
     )
-endif()
 
-# Test 2: CSR read - Hart ID
-if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    # Test 2: CSR read - Hart ID
     add_test(
         NAME phase2_qemu_csr_hartid
         COMMAND ${QEMU_SYSTEM_RISCV64}
@@ -117,10 +117,8 @@ if(TARGET app AND QEMU_SYSTEM_RISCV64)
         TIMEOUT 30
         LABELS "phase2;qemu;csr"
     )
-endif()
 
-# Test 3: CSR read - mstatus
-if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    # Test 3: CSR read - mstatus
     add_test(
         NAME phase2_qemu_csr_mstatus
         COMMAND ${QEMU_SYSTEM_RISCV64}
@@ -135,10 +133,8 @@ if(TARGET app AND QEMU_SYSTEM_RISCV64)
         TIMEOUT 30
         LABELS "phase2;qemu;csr"
     )
-endif()
 
-# Test 4: UART character output
-if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    # Test 4: UART character output
     add_test(
         NAME phase2_qemu_uart_output
         COMMAND ${QEMU_SYSTEM_RISCV64}
@@ -153,10 +149,8 @@ if(TARGET app AND QEMU_SYSTEM_RISCV64)
         TIMEOUT 30
         LABELS "phase2;qemu;uart"
     )
-endif()
 
-# Test 5: Basic memory operations
-if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    # Test 5: Basic memory operations
     add_test(
         NAME phase2_qemu_memory_ops
         COMMAND ${QEMU_SYSTEM_RISCV64}
@@ -171,10 +165,8 @@ if(TARGET app AND QEMU_SYSTEM_RISCV64)
         TIMEOUT 30
         LABELS "phase2;qemu;memory"
     )
-endif()
 
-# Test 6: Function call stack
-if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    # Test 6: Function call stack
     add_test(
         NAME phase2_qemu_function_calls
         COMMAND ${QEMU_SYSTEM_RISCV64}
@@ -189,10 +181,8 @@ if(TARGET app AND QEMU_SYSTEM_RISCV64)
         TIMEOUT 30
         LABELS "phase2;qemu;functional"
     )
-endif()
 
-# Test 7: All Phase 2 tests complete
-if(TARGET app AND QEMU_SYSTEM_RISCV64)
+    # Test 7: All Phase 2 tests complete
     add_test(
         NAME phase2_qemu_complete
         COMMAND ${QEMU_SYSTEM_RISCV64}
@@ -207,14 +197,15 @@ if(TARGET app AND QEMU_SYSTEM_RISCV64)
         TIMEOUT 30
         LABELS "phase2;qemu;integration"
     )
+
 endif()
 
 # =============================================================================
 # Phase 3: Cross-Platform Tests (Spike)
 # =============================================================================
 
-# Test 1: Boot on Spike and print "Hello RISC-V" via HTIF
-if(TARGET app AND SPIKE)
+# Phase 3 Spike tests: Only for single-core builds (NUM_HARTS == 1)
+if(TARGET app AND SPIKE AND NUM_HARTS EQUAL 1)
     add_test(
         NAME phase3_spike_boot_hello
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -225,10 +216,7 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;smoke"
     )
-endif()
-
-# Test 2: CSR read - Hart ID on Spike
-if(TARGET app AND SPIKE)
+    # Test 2: CSR read - Hart ID on Spike
     add_test(
         NAME phase3_spike_csr_hartid
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -239,10 +227,8 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;csr"
     )
-endif()
 
-# Test 3: CSR read - mstatus on Spike
-if(TARGET app AND SPIKE)
+    # Test 3: CSR read - mstatus on Spike
     add_test(
         NAME phase3_spike_csr_mstatus
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -253,10 +239,8 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;csr"
     )
-endif()
 
-# Test 4: HTIF console output on Spike
-if(TARGET app AND SPIKE)
+    # Test 4: HTIF console output on Spike
     add_test(
         NAME phase3_spike_htif_output
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -267,10 +251,8 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;htif"
     )
-endif()
 
-# Test 5: Memory operations on Spike
-if(TARGET app AND SPIKE)
+    # Test 5: Memory operations on Spike
     add_test(
         NAME phase3_spike_memory_ops
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -281,10 +263,8 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;memory"
     )
-endif()
 
-# Test 6: Function calls on Spike
-if(TARGET app AND SPIKE)
+    # Test 6: Function calls on Spike
     add_test(
         NAME phase3_spike_function_calls
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -295,10 +275,8 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;functional"
     )
-endif()
 
-# Test 7: All tests pass on Spike (integration)
-if(TARGET app AND SPIKE)
+    # Test 7: All tests pass on Spike (integration)
     add_test(
         NAME phase3_spike_complete
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -309,10 +287,8 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;integration"
     )
-endif()
 
-# Test 8: Platform name reports "Spike"
-if(TARGET app AND SPIKE)
+    # Test 8: Platform name reports "Spike"
     add_test(
         NAME phase3_spike_platform_name
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -323,6 +299,7 @@ if(TARGET app AND SPIKE)
         TIMEOUT 30
         LABELS "phase3;spike;smoke"
     )
+
 endif()
 
 # =============================================================================

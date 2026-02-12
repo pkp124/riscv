@@ -120,8 +120,7 @@ static inline void atomic_store_u32(volatile uint32_t *ptr, uint32_t val)
  * @param desired Value to store if current == expected
  * @return 1 if swap succeeded, 0 if it failed
  */
-static inline int atomic_cas_u32(volatile uint32_t *ptr, uint32_t expected,
-                                 uint32_t desired)
+static inline int atomic_cas_u32(volatile uint32_t *ptr, uint32_t expected, uint32_t desired)
 {
     uint32_t tmp;
     int result;

@@ -299,11 +299,50 @@ jobs:
             PASS=false
           fi
 
-          if grep -q "Phase 2 complete" output.log; then
-            echo "PASS: Application completed successfully"
+          # Check for phase-appropriate completion message
+          if [ "${{ matrix.config }}" = "smp" ]; then
+            if grep -q "Phase 4 complete" output.log; then
+              echo "PASS: Phase 4 SMP application completed successfully"
+            else
+              echo "FAIL: Phase 4 SMP application did not complete"
+              PASS=false
+            fi
+
+            # SMP-specific checks
+            if grep -q "\[SMP\] All ${{ matrix.num_harts }} harts online" output.log; then
+              echo "PASS: All ${{ matrix.num_harts }} harts booted"
+            else
+              echo "FAIL: Not all harts came online"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Spinlock: PASS" output.log; then
+              echo "PASS: Spinlock test passed"
+            else
+              echo "FAIL: Spinlock test did not pass"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Atomic operations: PASS" output.log; then
+              echo "PASS: Atomic operations test passed"
+            else
+              echo "FAIL: Atomic operations test did not pass"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Barrier synchronization: PASS" output.log; then
+              echo "PASS: Barrier test passed"
+            else
+              echo "FAIL: Barrier test did not pass"
+              PASS=false
+            fi
           else
-            echo "FAIL: Application did not complete"
-            PASS=false
+            if grep -q "Phase 2 complete" output.log; then
+              echo "PASS: Phase 2 application completed successfully"
+            else
+              echo "FAIL: Phase 2 application did not complete"
+              PASS=false
+            fi
           fi
 
           if [ "$PASS" = "true" ]; then
@@ -338,11 +377,19 @@ jobs:
             platform: spike
             config: single
             rvv: "0"
+            num_harts: "1"
             spike_args: "--isa=rv64gc"
+          - name: "SMP (4 harts)"
+            platform: spike
+            config: smp
+            rvv: "0"
+            num_harts: "4"
+            spike_args: "--isa=rv64gc -p4"
           - name: "RVV (VLEN=256)"
             platform: spike
             config: single
             rvv: "1"
+            num_harts: "1"
             spike_args: "--isa=rv64gcv --varch=vlen:256,elen:64"
 
     steps:
@@ -442,11 +489,43 @@ jobs:
             PASS=false
           fi
 
-          if grep -q "Phase 2 complete" output.log; then
-            echo "PASS: Application completed successfully"
+          # Check for phase-appropriate completion message
+          if [ "${{ matrix.config }}" = "smp" ]; then
+            if grep -q "Phase 4 complete" output.log; then
+              echo "PASS: Phase 4 SMP application completed successfully"
+            else
+              echo "FAIL: Phase 4 SMP application did not complete"
+              PASS=false
+            fi
+
+            # SMP-specific checks
+            if grep -q "\[SMP\] All ${{ matrix.num_harts }} harts online" output.log; then
+              echo "PASS: All ${{ matrix.num_harts }} harts booted on Spike"
+            else
+              echo "FAIL: Not all harts came online on Spike"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Spinlock: PASS" output.log; then
+              echo "PASS: Spinlock test passed on Spike"
+            else
+              echo "FAIL: Spinlock test did not pass on Spike"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Atomic operations: PASS" output.log; then
+              echo "PASS: Atomic operations test passed on Spike"
+            else
+              echo "FAIL: Atomic operations test did not pass on Spike"
+              PASS=false
+            fi
           else
-            echo "FAIL: Application did not complete"
-            PASS=false
+            if grep -q "Phase 2 complete" output.log; then
+              echo "PASS: Phase 2 application completed successfully"
+            else
+              echo "FAIL: Phase 2 application did not complete"
+              PASS=false
+            fi
           fi
 
           if [ "$PASS" = "true" ]; then
