@@ -12,7 +12,11 @@
 #include <stdint.h>
 
 /* Platform-specific console mapping */
-#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
+#if defined(PLATFORM_GEM5) && defined(GEM5_MODE_SE)
+#include "gem5_se_io.h"
+#define console_puts gem5_se_puts
+#define console_putc gem5_se_putc
+#elif defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
 #include "uart.h"
 #define console_puts uart_puts
 #define console_putc uart_putc

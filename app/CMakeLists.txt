@@ -10,6 +10,7 @@ set(APP_SOURCES
     src/htif.c
     src/platform.c
     src/smp.c
+    src/gem5_se_io.c
 )
 
 # Add RVV sources when enabled

@@ -8,7 +8,9 @@
 #include "csr.h"
 
 /* Include platform-specific I/O drivers */
-#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
+#if defined(PLATFORM_GEM5) && defined(GEM5_MODE_SE)
+#include "gem5_se_io.h"
+#elif defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
 #include "uart.h"
 #elif defined(PLATFORM_SPIKE)
 #include "htif.h"
@@ -17,7 +19,9 @@
 void platform_init(void)
 {
     /* Initialize platform-specific I/O */
-#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
+#if defined(PLATFORM_GEM5) && defined(GEM5_MODE_SE)
+    gem5_se_init();
+#elif defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
     uart_init();
 #elif defined(PLATFORM_SPIKE)
     htif_init();
@@ -57,6 +61,13 @@ void platform_exit(int exit_code)
     } else {
         *test_dev = VIRT_TEST_FINISHER_FAIL;
     }
+#elif defined(PLATFORM_GEM5) && defined(GEM5_MODE_SE)
+    /* gem5 SE mode: use exit syscall */
+    gem5_se_exit(exit_code);
+#elif defined(PLATFORM_GEM5) && defined(GEM5_MODE_FS)
+    /* gem5 FS mode: use m5ops pseudo-instruction to exit simulation */
+    (void) exit_code;
+    gem5_m5_exit(0);
 #endif
     /* Fallback: enter low-power infinite loop */
     (void) exit_code;

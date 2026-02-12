@@ -38,8 +38,15 @@
 #define RAM_SIZE (128 * 1024 * 1024) /* 128 MB */
 
 /* UART base addresses (platform-specific) */
-#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
+#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_RENODE)
 #define UART_BASE 0x10000000UL /* NS16550A UART */
+#elif defined(PLATFORM_GEM5)
+#if defined(GEM5_MODE_SE)
+/* gem5 SE mode: No MMIO UART. Uses syscall-based I/O (gem5_se_io.h) */
+#else
+/* gem5 FS mode: NS16550A / Uart8250 UART at standard address */
+#define UART_BASE 0x10000000UL
+#endif
 #elif defined(PLATFORM_SPIKE)
 /* Spike uses HTIF (Host-Target Interface), not MMIO UART.
  * The tohost/fromhost symbols are defined in the linker script (spike.ld)
@@ -53,6 +60,71 @@
 #define VIRT_TEST_FINISHER_PASS 0x5555
 #define VIRT_TEST_FINISHER_FAIL 0x3333
 #endif
+
+/* =============================================================================
+ * gem5 Specific Definitions
+ * ============================================================================= */
+
+#if defined(PLATFORM_GEM5)
+
+/**
+ * gem5 m5ops pseudo-instruction support.
+ *
+ * gem5 recognizes special instruction encodings as "m5ops" which control
+ * the simulator (exit, dump stats, reset stats, etc.).
+ *
+ * For RISC-V, m5ops use a custom instruction encoding format:
+ *   .insn r CUSTOM_0, func3, func7, rd, rs1, rs2
+ *
+ * CUSTOM_0 opcode = 0x0b (bits [6:0])
+ * func3 = 0x0
+ * func7 encodes the m5op type:
+ *   0x21 = m5_exit
+ *   0x31 = m5_dump_stats
+ *   0x32 = m5_reset_stats
+ */
+
+/* m5op function codes (func7 field) */
+#define M5OP_EXIT 0x21
+#define M5OP_DUMP_STATS 0x31
+#define M5OP_RESET_STATS 0x32
+
+/**
+ * @brief Trigger gem5 simulation exit via m5ops pseudo-instruction
+ * @param delay Delay (in ticks) before exiting; 0 = immediate
+ */
+static inline void gem5_m5_exit(uint64_t delay)
+{
+    register uint64_t a0 __asm__("a0") = delay;
+    register uint64_t a1 __asm__("a1") = 0;
+    __asm__ __volatile__(".insn r 0x0b, 0x0, 0x21, zero, %0, %1" : : "r"(a0), "r"(a1) : "memory");
+}
+
+/**
+ * @brief Trigger gem5 stats dump via m5ops pseudo-instruction
+ * @param delay Delay (in ticks) before dumping; 0 = immediate
+ * @param period Period (in ticks) for repeated dumps; 0 = once
+ */
+static inline void gem5_m5_dump_stats(uint64_t delay, uint64_t period)
+{
+    register uint64_t a0 __asm__("a0") = delay;
+    register uint64_t a1 __asm__("a1") = period;
+    __asm__ __volatile__(".insn r 0x0b, 0x0, 0x31, zero, %0, %1" : : "r"(a0), "r"(a1) : "memory");
+}
+
+/**
+ * @brief Trigger gem5 stats reset via m5ops pseudo-instruction
+ * @param delay Delay (in ticks) before reset; 0 = immediate
+ * @param period Period (in ticks) for repeated resets; 0 = once
+ */
+static inline void gem5_m5_reset_stats(uint64_t delay, uint64_t period)
+{
+    register uint64_t a0 __asm__("a0") = delay;
+    register uint64_t a1 __asm__("a1") = period;
+    __asm__ __volatile__(".insn r 0x0b, 0x0, 0x32, zero, %0, %1" : : "r"(a0), "r"(a1) : "memory");
+}
+
+#endif /* PLATFORM_GEM5 */
 
 /* CLINT (Core-Local Interruptor) */
 #define CLINT_BASE 0x02000000UL
