@@ -366,8 +366,6 @@ static void run_phase4_tests(void)
 
 static void print_banner(void)
 {
-    char buf[32];
-
     console_puts("\n");
     console_puts("=================================================================\n");
     console_puts("RISC-V Bare-Metal System Explorer\n");
@@ -377,12 +375,14 @@ static void print_banner(void)
     console_puts("\n");
 
 #if NUM_HARTS > 1
-    console_puts("Phase: 4 - Multi-Core SMP (");
-    int_to_str(NUM_HARTS, buf, sizeof(buf));
-    console_puts(buf);
-    console_puts(" harts)\n");
+    {
+        char buf[32];
+        console_puts("Phase: 4 - Multi-Core SMP (");
+        int_to_str(NUM_HARTS, buf, sizeof(buf));
+        console_puts(buf);
+        console_puts(" harts)\n");
+    }
 #else
-    (void) buf;
     console_puts("Phase: 2 - Single-Core Bare-Metal\n");
 #endif
 
