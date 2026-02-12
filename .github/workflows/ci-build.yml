@@ -115,6 +115,24 @@ jobs:
             config: single
             rvv: "1"
             num_harts: "1"
+          - name: "gem5 FS (Single-Core)"
+            platform: gem5
+            config: single
+            rvv: "0"
+            num_harts: "1"
+            gem5_mode: "fs"
+          - name: "gem5 SE (Single-Core)"
+            platform: gem5
+            config: single
+            rvv: "0"
+            num_harts: "1"
+            gem5_mode: "se"
+          - name: "gem5 FS SMP (4 harts)"
+            platform: gem5
+            config: smp
+            rvv: "0"
+            num_harts: "4"
+            gem5_mode: "fs"
 
     steps:
       - name: Checkout
@@ -139,6 +157,14 @@ jobs:
             else
               PRESET="spike"
             fi
+          elif [ "${{ matrix.platform }}" = "gem5" ]; then
+            if [ "${{ matrix.gem5_mode }}" = "se" ]; then
+              PRESET="gem5-se"
+            elif [ "${{ matrix.config }}" = "smp" ]; then
+              PRESET="gem5-fs-smp"
+            else
+              PRESET="gem5-fs"
+            fi
           elif [ "${{ matrix.platform }}" = "qemu" ]; then
             if [ "${{ matrix.config }}" = "smp" ] && [ "${{ matrix.rvv }}" = "1" ]; then
               PRESET="qemu-smp-rvv"
@@ -156,22 +182,10 @@ jobs:
 
       - name: Build ELF
         run: |
-          # Use preset-specific build directory
+          # Use preset-specific build directory (same name as preset)
+          BUILD_DIR="build/${{ env.PRESET }}"
+          # Map 'default' preset to build/default
           if [ "${{ env.PRESET }}" = "default" ]; then
-            BUILD_DIR="build/default"
-          elif [ "${{ env.PRESET }}" = "qemu-smp" ]; then
-            BUILD_DIR="build/qemu-smp"
-          elif [ "${{ env.PRESET }}" = "qemu-rvv-256" ]; then
-            BUILD_DIR="build/qemu-rvv-256"
-          elif [ "${{ env.PRESET }}" = "qemu-smp-rvv" ]; then
-            BUILD_DIR="build/qemu-smp-rvv"
-          elif [ "${{ env.PRESET }}" = "spike" ]; then
-            BUILD_DIR="build/spike"
-          elif [ "${{ env.PRESET }}" = "spike-smp" ]; then
-            BUILD_DIR="build/spike-smp"
-          elif [ "${{ env.PRESET }}" = "spike-rvv" ]; then
-            BUILD_DIR="build/spike-rvv"
-          else
             BUILD_DIR="build/default"
           fi
           
