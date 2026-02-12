@@ -4,8 +4,8 @@
 
 This roadmap outlines the progressive implementation strategy for building a comprehensive RISC-V bare-metal simulation platform. We follow a **Test-Driven Development (TDD)** approach with **CMake + CTest** build system, starting from simple single-core configurations and progressively adding complexity.
 
-**Current Status:** Phase 2 - Single-Core Bare-Metal ✅ COMPLETE  
-**Next Phase:** Phase 3 - Cross-Platform Support (Spike)
+**Current Status:** Phase 3 - Cross-Platform Support (Spike) ✅ COMPLETE  
+**Next Phase:** Phase 4 - Multi-Core SMP Support
 
 ---
 
@@ -121,41 +121,46 @@ This roadmap outlines the progressive implementation strategy for building a com
 
 ---
 
-### 🎯 Phase 3: Cross-Platform Support (Spike) — IN PROGRESS
+### ✅ Phase 3: Cross-Platform Support (Spike) (COMPLETE)
 **Goal:** Port application to Spike ISA simulator
 
-**Duration Estimate:** 1-2 weeks  
-**Priority:** P0 (Critical)  
+**Completed:** 2026-02-12  
 **Platform:** Spike
 
-**Already Done (from Phase 2 cross-platform work):**
-- [x] htif.c/htif.h - HTIF (Host-Target Interface) driver
-- [x] Linker script: spike.ld
-- [x] Platform abstraction for HTIF vs UART (compile-time #ifdef)
-- [x] Spike CMake presets (spike, spike-smp, spike-rvv)
-- [x] Spike builds pass in CI (3 configurations)
+#### 3.1 HTIF Driver Fixes
+- [x] spike.ld: Export `tohost`/`fromhost` symbols (Spike requires exact names in ELF)
+- [x] htif.c: Use extern linker symbols instead of hardcoded addresses
+- [x] htif.c: Clean HTIF init and character output
+- [x] platform.c: `platform_exit()` with HTIF poweroff for Spike
+- [x] platform.c: `platform_exit()` with sifive_test finisher for QEMU
+- [x] startup.S: Call `platform_exit()` after main returns
 
-#### 3.1 TDD: Spike-Specific Tests (REMAINING)
-- [ ] Test: Boot on Spike and print output via HTIF
-- [ ] Test: HTIF console output
-- [ ] Test: CSR access on Spike
-- [ ] Test: Compare output with QEMU (functional equivalence)
+#### 3.2 TDD: Spike-Specific Tests (8 tests, all passing)
+- [x] phase3_spike_boot_hello - Boot and print via HTIF
+- [x] phase3_spike_csr_hartid - CSR access on Spike
+- [x] phase3_spike_csr_mstatus - mstatus read on Spike
+- [x] phase3_spike_htif_output - HTIF console output
+- [x] phase3_spike_memory_ops - Memory operations
+- [x] phase3_spike_function_calls - Function calls
+- [x] phase3_spike_complete - Integration (5/5 PASS)
+- [x] phase3_spike_platform_name - Platform reports "Spike"
 
-#### 3.2 Spike Simulation in CI (REMAINING)
-- [ ] Install Spike in CI (build from source or use package)
-- [ ] Add Spike simulation jobs to ci-build.yml
-- [ ] Capture and validate Spike console output
-- [ ] Cross-validate QEMU vs Spike outputs
+#### 3.3 CI Integration
+- [x] Spike simulation job in ci-build.yml (single-core + RVV)
+- [x] Spike built from source with caching
+- [x] Output validation for Spike simulations
+- [x] Cross-platform validation job (QEMU vs Spike output diff)
+- [x] Improved QEMU validation to match Spike approach
 
-#### 3.3 CTest Integration (REMAINING)
-- [ ] Add Spike test cases to tests/CMakeLists.txt
-- [ ] Add cross-platform test validation
+#### 3.4 Cross-Platform Validation
+- [x] QEMU and Spike produce functionally identical test output
+- [x] Both platforms: 5/5 tests PASS, same CSR values, same test flow
+- [x] Clean exit on both platforms (sifive_test for QEMU, HTIF for Spike)
 
-**Exit Criteria:**
-- Application runs on both QEMU and Spike
-- Output is functionally equivalent
-- CI validates both platforms
-- Cross-platform test harness operational
+**Results:**
+- Spike: 8/8 CTest tests PASS (0.10s)
+- QEMU: 7/7 CTest tests PASS (0.19s)
+- Cross-platform: Functionally identical output
 
 ---
 
