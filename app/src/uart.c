@@ -16,8 +16,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Only compile for platforms that have UART */
-#if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
+/* Only compile for platforms that have MMIO UART.
+ * gem5 SE mode does NOT have UART (uses syscall-based I/O instead). */
+#if defined(PLATFORM_QEMU_VIRT) || (defined(PLATFORM_GEM5) && !defined(GEM5_MODE_SE)) ||           \
+    defined(PLATFORM_RENODE)
 
 /* =============================================================================
  * NS16550A Register Offsets
@@ -138,9 +140,9 @@ bool uart_can_read(void)
     return (UART_REG(UART_LSR_OFFSET) & UART_LSR_DR) != 0;
 }
 
-#else /* Spike or other platforms without UART */
+#else /* Spike, gem5 SE, or other platforms without MMIO UART */
 
-/* Stub implementations for platforms without UART (e.g., Spike uses HTIF) */
+/* Stub implementations for platforms without UART (e.g., Spike uses HTIF, gem5 SE uses syscalls) */
 void uart_init(void)
 {
     /* No UART on this platform */
@@ -177,4 +179,4 @@ bool uart_can_read(void)
     return false;
 }
 
-#endif /* PLATFORM_QEMU_VIRT || PLATFORM_GEM5 || PLATFORM_RENODE */
+#endif /* PLATFORM_QEMU_VIRT || (PLATFORM_GEM5 && !GEM5_MODE_SE) || PLATFORM_RENODE */
