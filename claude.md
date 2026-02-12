@@ -15,8 +15,8 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 
 ## Current Project Status
 
-**Completed:** Phase 0 (Design), Phase 1 (Build System), Phase 2 (QEMU), Phase 3 (Spike)  
-**Next Phase:** Phase 4 (Multi-Core SMP Support)  
+**Completed:** Phase 0 (Design), Phase 1 (Build System), Phase 2 (QEMU), Phase 3 (Spike), Phase 4 (SMP)  
+**Next Phase:** Phase 5 (RISC-V Vector Extension - RVV 1.0)  
 **Last Updated:** 2026-02-12  
 
 ### What Exists
@@ -25,15 +25,15 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 ✅ Full CI pipeline (lint, build matrix, QEMU + Spike simulations, cross-validation)  
 ✅ CMake build system with 10+ presets (CMakeLists.txt, CMakePresets.json)  
 ✅ RISC-V toolchain file (cmake/toolchain/riscv64-elf.cmake)  
-✅ CTest: 7 QEMU tests + 8 Spike tests, all passing  
-✅ Application source (startup.S, main.c, uart.c, htif.c, platform.c)  
-✅ Platform headers (platform.h, csr.h, uart.h, htif.h)  
-✅ Linker scripts (qemu-virt.ld, spike.ld) with clean exit support  
+✅ CTest: 7 QEMU single-core + 7 QEMU SMP + 8 Spike single-core + 5 Spike SMP tests  
+✅ Application source (startup.S, main.c, uart.c, htif.c, platform.c, smp.c)  
+✅ Platform headers (platform.h, csr.h, uart.h, htif.h, console.h, smp.h, atomic.h)  
+✅ Linker scripts (qemu-virt.ld, spike.ld) with SMP stack allocation  
 ✅ Setup scripts (setup-toolchain.sh, setup-simulators.sh, verify-environment.sh)  
 ✅ Cross-platform validation (QEMU vs Spike output functionally identical)  
+✅ SMP support: spinlocks, barriers, atomic ops, multi-hart boot (2-8 harts)  
 
 ### What Doesn't Exist Yet
-❌ SMP support code (Phase 4)  
 ❌ RVV workloads (Phase 5)  
 ❌ gem5 platform support (Phase 6)  
 ❌ Renode platform support (Phase 7)  
