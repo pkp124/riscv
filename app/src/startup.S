@@ -60,6 +60,7 @@ _start:
     la      sp, __stack_start
     li      t1, 0x10000             # STACK_SIZE (64 KB, must match linker)
     add     sp, sp, t1              # sp = __stack_start + STACK_SIZE
+    andi    sp, sp, -16             # Align sp to 16-byte boundary (ABI requirement)
 #else
     la      sp, __stack_top         # Single-core: sp = top of stack (grows down)
 #endif
@@ -89,20 +90,19 @@ _start:
      * ========================================================================= */
 #if NUM_HARTS > 1
 .Lsecondary_hart:
+    /* Secondary harts: set up stack, wait for release, then run */
+
     /* Step 1: Calculate per-hart stack pointer */
     /* Each hart gets STACK_SIZE (64 KB) bytes of stack.
      * Hart N's sp = __stack_start + (N + 1) * STACK_SIZE
      * (Stack grows downward, so sp points to top of allocated region)
-     * Hart 0: __stack_start + 1*64K  (set in primary path above)
-     * Hart 1: __stack_start + 2*64K
-     * Hart 2: __stack_start + 3*64K
-     * Hart 3: __stack_start + 4*64K = __stack_top
      */
     la      t0, __stack_start       # t0 = base of all stacks
     li      t1, 0x10000             # t1 = STACK_SIZE (64 KB, must match linker)
     addi    t2, a0, 1               # t2 = hartid + 1
     mul     t2, t2, t1              # t2 = (hartid + 1) * STACK_SIZE
     add     sp, t0, t2              # sp = stack_start + (hartid + 1) * STACK_SIZE
+    andi    sp, sp, -16             # Align sp to 16-byte boundary (ABI requirement)
 
     /* Step 2: Disable interrupts and set trap handler */
     csrci   mstatus, 0x8            # Clear MIE bit (bit 3)
@@ -111,12 +111,13 @@ _start:
 
     /* Step 3: Spin on smp_hart_release flag */
     /* This flag is in BSS, zeroed by hart 0. When hart 0 calls
-     * smp_release_harts(), it sets this to non-zero.
-     * We use a simple polling loop (no WFI to avoid IPI dependency). */
+     * smp_release_harts(), it sets this to non-zero. */
     la      t0, smp_hart_release    # Load address of release flag
 .Lwait_release:
     lw      t1, 0(t0)              # Load release flag
-    beqz    t1, .Lwait_release     # If zero, keep waiting
+    bnez    t1, .Lreleased         # If non-zero, proceed
+    j       .Lwait_release         # Keep polling
+.Lreleased:
     fence   rw, rw                  # Memory fence after observing release
 
     /* Step 4: Call smp_secondary_entry(hartid) */
