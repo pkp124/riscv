@@ -31,12 +31,44 @@ else()
     message(STATUS "Spike not found - install with: ./scripts/setup-simulators.sh")
 endif()
 
-# Find gem5
-find_program(GEM5_OPT gem5.opt PATHS /opt/gem5/build/RISCV)
+# Find gem5 (check multiple common locations)
+find_program(GEM5_OPT gem5.opt
+    PATHS
+        /opt/gem5/build/RISCV
+        $ENV{GEM5_HOME}/build/RISCV
+        ${CMAKE_SOURCE_DIR}/../gem5/build/RISCV
+    NO_DEFAULT_PATH
+)
+# Also check system PATH
+if(NOT GEM5_OPT)
+    find_program(GEM5_OPT gem5.opt)
+endif()
 if(GEM5_OPT)
     message(STATUS "Found gem5: ${GEM5_OPT}")
+    # Try to get gem5 version
+    execute_process(
+        COMMAND ${GEM5_OPT} --version
+        OUTPUT_VARIABLE GEM5_VERSION_OUTPUT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        TIMEOUT 5
+    )
+    if(GEM5_VERSION_OUTPUT)
+        message(STATUS "gem5 version: ${GEM5_VERSION_OUTPUT}")
+    endif()
 else()
     message(STATUS "gem5 not found - install with: ./scripts/setup-simulators.sh")
+endif()
+
+# gem5 Python config locations
+set(GEM5_FS_CONFIG ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/fs_config.py)
+set(GEM5_SE_CONFIG ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/se_config.py)
+
+if(EXISTS ${GEM5_FS_CONFIG})
+    message(STATUS "gem5 FS config: ${GEM5_FS_CONFIG}")
+endif()
+if(EXISTS ${GEM5_SE_CONFIG})
+    message(STATUS "gem5 SE config: ${GEM5_SE_CONFIG}")
 endif()
 
 # Find Renode
@@ -116,26 +148,42 @@ function(add_spike_run_target TARGET_NAME ELF_TARGET)
 endfunction()
 
 # Function to add gem5 run target
+# MODE: "se" or "fs"
+# Optional: CPU_TYPE (default: AtomicSimpleCPU)
 function(add_gem5_run_target TARGET_NAME ELF_TARGET MODE)
     if(NOT GEM5_OPT)
         return()
     endif()
 
+    # Select config script based on mode
     if(MODE STREQUAL "se")
-        set(CONFIG_SCRIPT ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/se_config.py)
+        set(CONFIG_SCRIPT ${GEM5_SE_CONFIG})
     else()
-        set(CONFIG_SCRIPT ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/fs_config.py)
+        set(CONFIG_SCRIPT ${GEM5_FS_CONFIG})
     endif()
     
     if(NOT EXISTS ${CONFIG_SCRIPT})
         message(STATUS "gem5 config script not found: ${CONFIG_SCRIPT}")
         return()
     endif()
+
+    # Default CPU type
+    set(GEM5_CPU_TYPE "AtomicSimpleCPU" CACHE STRING "gem5 CPU model")
+
+    # Build gem5 command
+    set(GEM5_ARGS ${CONFIG_SCRIPT})
+    list(APPEND GEM5_ARGS --cpu-type=${GEM5_CPU_TYPE})
+    list(APPEND GEM5_ARGS --cmd=$<TARGET_FILE:${ELF_TARGET}>)
+
+    # Add SMP if configured
+    if(DEFINED NUM_HARTS AND NUM_HARTS GREATER 1)
+        list(APPEND GEM5_ARGS --num-cpus=${NUM_HARTS})
+    endif()
     
     add_custom_target(${TARGET_NAME}
-        COMMAND ${GEM5_OPT} ${CONFIG_SCRIPT} --cmd=$<TARGET_FILE:${ELF_TARGET}>
+        COMMAND ${GEM5_OPT} ${GEM5_ARGS}
         DEPENDS ${ELF_TARGET}
-        COMMENT "Running ${ELF_TARGET} on gem5 (${MODE} mode)"
+        COMMENT "Running ${ELF_TARGET} on gem5 (${MODE} mode, ${GEM5_CPU_TYPE})"
         USES_TERMINAL
     )
 endfunction()

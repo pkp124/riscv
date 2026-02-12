@@ -133,6 +133,36 @@
       }
     },
     {
+      "name": "gem5-fs-timing",
+      "inherits": "gem5-fs",
+      "displayName": "gem5 FS TimingSimpleCPU",
+      "description": "gem5 full system with TimingSimpleCPU (simple timing model)",
+      "binaryDir": "${sourceDir}/build/gem5-fs-timing",
+      "cacheVariables": {
+        "GEM5_CPU_TYPE": "TimingSimpleCPU"
+      }
+    },
+    {
+      "name": "gem5-fs-minor",
+      "inherits": "gem5-fs",
+      "displayName": "gem5 FS MinorCPU (in-order pipeline)",
+      "description": "gem5 full system with MinorCPU detailed in-order pipeline",
+      "binaryDir": "${sourceDir}/build/gem5-fs-minor",
+      "cacheVariables": {
+        "GEM5_CPU_TYPE": "MinorCPU"
+      }
+    },
+    {
+      "name": "gem5-fs-o3",
+      "inherits": "gem5-fs",
+      "displayName": "gem5 FS O3CPU (out-of-order)",
+      "description": "gem5 full system with DerivO3CPU out-of-order pipeline",
+      "binaryDir": "${sourceDir}/build/gem5-fs-o3",
+      "cacheVariables": {
+        "GEM5_CPU_TYPE": "DerivO3CPU"
+      }
+    },
+    {
       "name": "gem5-fs-smp",
       "inherits": "default",
       "displayName": "gem5 Full System SMP (4 harts)",
@@ -231,6 +261,26 @@
       "displayName": "Build gem5 FS"
     },
     {
+      "name": "gem5-fs-timing",
+      "configurePreset": "gem5-fs-timing",
+      "displayName": "Build gem5 FS TimingSimpleCPU"
+    },
+    {
+      "name": "gem5-fs-minor",
+      "configurePreset": "gem5-fs-minor",
+      "displayName": "Build gem5 FS MinorCPU"
+    },
+    {
+      "name": "gem5-fs-o3",
+      "configurePreset": "gem5-fs-o3",
+      "displayName": "Build gem5 FS O3CPU"
+    },
+    {
+      "name": "gem5-fs-smp",
+      "configurePreset": "gem5-fs-smp",
+      "displayName": "Build gem5 FS SMP"
+    },
+    {
       "name": "renode",
       "configurePreset": "renode",
       "displayName": "Build Renode"
@@ -308,6 +358,30 @@
       "name": "gem5-fs",
       "configurePreset": "gem5-fs",
       "displayName": "Test gem5 FS",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "gem5-fs-timing",
+      "configurePreset": "gem5-fs-timing",
+      "displayName": "Test gem5 FS TimingSimpleCPU",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "gem5-fs-minor",
+      "configurePreset": "gem5-fs-minor",
+      "displayName": "Test gem5 FS MinorCPU",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "gem5-fs-smp",
+      "configurePreset": "gem5-fs-smp",
+      "displayName": "Test gem5 FS SMP",
       "output": {
         "outputOnFailure": true
       }

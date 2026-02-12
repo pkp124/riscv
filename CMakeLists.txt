@@ -47,6 +47,10 @@ set(VLEN "128" CACHE STRING "Vector length in bits (128, 256, 512, 1024)")
 set(GEM5_MODE "fs" CACHE STRING "gem5 mode: se (syscall emulation) or fs (full system)")
 set_property(CACHE GEM5_MODE PROPERTY STRINGS se fs)
 
+# gem5 CPU model
+set(GEM5_CPU_TYPE "AtomicSimpleCPU" CACHE STRING "gem5 CPU model: AtomicSimpleCPU, TimingSimpleCPU, MinorCPU, DerivO3CPU")
+set_property(CACHE GEM5_CPU_TYPE PROPERTY STRINGS AtomicSimpleCPU TimingSimpleCPU MinorCPU DerivO3CPU)
+
 # Build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type: Debug, Release, RelWithDebInfo, MinSizeRel" FORCE)
