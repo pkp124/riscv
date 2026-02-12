@@ -2,7 +2,7 @@
  * @file main.c
  * @brief Bare-metal application main entry point
  *
- * Phase 2 (NUM_HARTS == 1): Single-core tests
+ * Phase 2 (NUM_HARTS == 1, no RVV): Single-core tests
  *   - Console output, CSR access, memory operations, function calls
  *
  * Phase 4 (NUM_HARTS > 1): Multi-core SMP tests
@@ -11,7 +11,16 @@
  *   - Atomic operations
  *   - Barrier synchronization
  *
- * Designed to pass Phase 2 and Phase 4 CTest test cases.
+ * Phase 5 (NUM_HARTS == 1, ENABLE_RVV): RISC-V Vector Extension tests
+ *   - RVV detection (misa V-bit, VLEN/VLENB)
+ *   - Vector add (int32, float32)
+ *   - Vector memcpy
+ *   - Vector dot product
+ *   - SAXPY (y = a*x + y)
+ *   - Matrix multiply
+ *   - Scalar vs vector performance comparison
+ *
+ * Designed to pass Phase 2, Phase 4, and Phase 5 CTest test cases.
  */
 
 #include "console.h"
@@ -23,6 +32,11 @@
 
 #if NUM_HARTS > 1
 #include "smp.h"
+#endif
+
+#if defined(ENABLE_RVV) && NUM_HARTS <= 1
+#include "rvv/rvv_common.h"
+#include "rvv/rvv_detect.h"
 #endif
 
 /* =============================================================================
@@ -47,7 +61,7 @@ static void int_to_str(uint64_t value, char *buf, int buf_size)
     console_put_dec(value, buf, buf_size);
 }
 
-#if NUM_HARTS <= 1
+#if NUM_HARTS <= 1 && !defined(ENABLE_RVV)
 /**
  * @brief Print a uint64_t value in hex (used in Phase 2 CSR test)
  */
@@ -110,7 +124,7 @@ static void print_summary(int phase)
  * Phase 2: Single-Core Tests
  * ============================================================================= */
 
-#if NUM_HARTS <= 1
+#if NUM_HARTS <= 1 && !defined(ENABLE_RVV)
 
 static void test_csr(void)
 {
@@ -204,7 +218,7 @@ static void run_phase2_tests(void)
     console_puts("\n");
 }
 
-#endif /* NUM_HARTS <= 1 */
+#endif /* NUM_HARTS <= 1 && !ENABLE_RVV */
 
 /* =============================================================================
  * Phase 4: SMP Tests
@@ -361,6 +375,339 @@ static void run_phase4_tests(void)
 #endif /* NUM_HARTS > 1 */
 
 /* =============================================================================
+ * Phase 5: RVV Tests
+ * ============================================================================= */
+
+#if defined(ENABLE_RVV) && NUM_HARTS <= 1
+
+/**
+ * @brief Test 1: RVV Detection - check misa V-bit, print VLEN/VLENB
+ */
+static void test_rvv_detect(void)
+{
+    bool available = rvv_available();
+    record_test("RVV detection", available);
+
+    if (available) {
+        rvv_print_info();
+    }
+}
+
+/**
+ * @brief Test 2: Integer vector add correctness
+ */
+static void test_rvv_vec_add_i32(void)
+{
+    static int32_t a[RVV_TEST_SIZE];
+    static int32_t b[RVV_TEST_SIZE];
+    static int32_t c_scalar[RVV_TEST_SIZE];
+    static int32_t c_vector[RVV_TEST_SIZE];
+    char buf[32];
+
+    /* Initialize test data */
+    for (uint32_t i = 0; i < RVV_TEST_SIZE; i++) {
+        a[i] = (int32_t) (i + 1);
+        b[i] = (int32_t) (i * 2);
+    }
+
+    /* Scalar reference */
+    uint64_t start = rvv_read_mcycle();
+    scalar_vec_add_i32(a, b, c_scalar, RVV_TEST_SIZE);
+    uint64_t scalar_cycles = rvv_read_mcycle() - start;
+
+    /* RVV implementation */
+    start = rvv_read_mcycle();
+    rvv_vec_add_i32(a, b, c_vector, RVV_TEST_SIZE);
+    uint64_t vector_cycles = rvv_read_mcycle() - start;
+
+    /* Verify correctness */
+    bool passed = true;
+    for (uint32_t i = 0; i < RVV_TEST_SIZE; i++) {
+        if (c_scalar[i] != c_vector[i]) {
+            passed = false;
+            break;
+        }
+    }
+
+    record_test("Vec add (int32)", passed);
+
+    /* Print cycle comparison */
+    console_puts("[RVV] vec_add_i32: scalar=");
+    int_to_str(scalar_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" vec=");
+    int_to_str(vector_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" cycles\n");
+}
+
+/**
+ * @brief Test 3: Vector memcpy correctness
+ */
+static void test_rvv_memcpy(void)
+{
+    static uint8_t src[RVV_TEST_SIZE * 4];
+    static uint8_t dst_scalar[RVV_TEST_SIZE * 4];
+    static uint8_t dst_vector[RVV_TEST_SIZE * 4];
+    char buf[32];
+    size_t nbytes = RVV_TEST_SIZE * 4;
+
+    /* Initialize source data */
+    for (uint32_t i = 0; i < nbytes; i++) {
+        src[i] = (uint8_t) (i & 0xFF);
+        dst_scalar[i] = 0;
+        dst_vector[i] = 0;
+    }
+
+    /* Scalar reference */
+    uint64_t start = rvv_read_mcycle();
+    scalar_memcpy(dst_scalar, src, nbytes);
+    uint64_t scalar_cycles = rvv_read_mcycle() - start;
+
+    /* RVV implementation */
+    start = rvv_read_mcycle();
+    rvv_memcpy(dst_vector, src, nbytes);
+    uint64_t vector_cycles = rvv_read_mcycle() - start;
+
+    /* Verify correctness */
+    bool passed = true;
+    for (uint32_t i = 0; i < nbytes; i++) {
+        if (dst_scalar[i] != dst_vector[i]) {
+            passed = false;
+            break;
+        }
+    }
+
+    record_test("Vec memcpy", passed);
+
+    console_puts("[RVV] vec_memcpy: scalar=");
+    int_to_str(scalar_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" vec=");
+    int_to_str(vector_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" cycles\n");
+}
+
+/**
+ * @brief Test 4: Float32 vector add correctness
+ */
+static void test_rvv_vec_add_f32(void)
+{
+    static float a[RVV_TEST_SIZE];
+    static float b[RVV_TEST_SIZE];
+    static float c_scalar[RVV_TEST_SIZE];
+    static float c_vector[RVV_TEST_SIZE];
+    char buf[32];
+
+    /* Initialize test data */
+    for (uint32_t i = 0; i < RVV_TEST_SIZE; i++) {
+        a[i] = (float) (i + 1) * 1.0f;
+        b[i] = (float) (i) * 0.5f;
+    }
+
+    /* Scalar reference */
+    uint64_t start = rvv_read_mcycle();
+    scalar_vec_add_f32(a, b, c_scalar, RVV_TEST_SIZE);
+    uint64_t scalar_cycles = rvv_read_mcycle() - start;
+
+    /* RVV implementation */
+    start = rvv_read_mcycle();
+    rvv_vec_add_f32(a, b, c_vector, RVV_TEST_SIZE);
+    uint64_t vector_cycles = rvv_read_mcycle() - start;
+
+    /* Verify correctness (with floating-point tolerance) */
+    bool passed = true;
+    for (uint32_t i = 0; i < RVV_TEST_SIZE; i++) {
+        if (!rvv_float_eq(c_scalar[i], c_vector[i], 0.001f)) {
+            passed = false;
+            break;
+        }
+    }
+
+    record_test("Vec add (float32)", passed);
+
+    console_puts("[RVV] vec_add_f32: scalar=");
+    int_to_str(scalar_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" vec=");
+    int_to_str(vector_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" cycles\n");
+}
+
+/**
+ * @brief Test 5: Dot product correctness
+ */
+static void test_rvv_dot_product(void)
+{
+    static float a[RVV_TEST_SIZE];
+    static float b[RVV_TEST_SIZE];
+    char buf[32];
+
+    /* Initialize test data: a[i] = i+1, b[i] = 1.0 */
+    for (uint32_t i = 0; i < RVV_TEST_SIZE; i++) {
+        a[i] = (float) (i + 1);
+        b[i] = 1.0f;
+    }
+
+    /* Scalar reference: sum(1..64) = 64*65/2 = 2080 */
+    uint64_t start = rvv_read_mcycle();
+    float scalar_result = scalar_dot_product_f32(a, b, RVV_TEST_SIZE);
+    uint64_t scalar_cycles = rvv_read_mcycle() - start;
+
+    /* RVV implementation */
+    start = rvv_read_mcycle();
+    float vector_result = rvv_dot_product_f32(a, b, RVV_TEST_SIZE);
+    uint64_t vector_cycles = rvv_read_mcycle() - start;
+
+    /* Verify correctness */
+    bool passed = rvv_float_eq(scalar_result, vector_result, 0.01f);
+
+    record_test("Dot product (float32)", passed);
+
+    console_puts("[RVV] dot_product: scalar=");
+    int_to_str(scalar_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" vec=");
+    int_to_str(vector_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" cycles\n");
+}
+
+/**
+ * @brief Test 6: SAXPY correctness
+ */
+static void test_rvv_saxpy(void)
+{
+    static float x[RVV_TEST_SIZE];
+    static float y_scalar[RVV_TEST_SIZE];
+    static float y_vector[RVV_TEST_SIZE];
+    char buf[32];
+    float a = 2.0f;
+
+    /* Initialize test data */
+    for (uint32_t i = 0; i < RVV_TEST_SIZE; i++) {
+        x[i] = (float) (i + 1);
+        y_scalar[i] = (float) i * 0.5f;
+        y_vector[i] = (float) i * 0.5f;
+    }
+
+    /* Scalar reference */
+    uint64_t start = rvv_read_mcycle();
+    scalar_saxpy(a, x, y_scalar, RVV_TEST_SIZE);
+    uint64_t scalar_cycles = rvv_read_mcycle() - start;
+
+    /* RVV implementation */
+    start = rvv_read_mcycle();
+    rvv_saxpy(a, x, y_vector, RVV_TEST_SIZE);
+    uint64_t vector_cycles = rvv_read_mcycle() - start;
+
+    /* Verify correctness */
+    bool passed = true;
+    for (uint32_t i = 0; i < RVV_TEST_SIZE; i++) {
+        if (!rvv_float_eq(y_scalar[i], y_vector[i], 0.01f)) {
+            passed = false;
+            break;
+        }
+    }
+
+    record_test("SAXPY (float32)", passed);
+
+    console_puts("[RVV] saxpy: scalar=");
+    int_to_str(scalar_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" vec=");
+    int_to_str(vector_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" cycles\n");
+}
+
+/**
+ * @brief Test 7: Matrix multiply correctness
+ */
+static void test_rvv_matmul(void)
+{
+    static float A[RVV_MATRIX_DIM * RVV_MATRIX_DIM];
+    static float B[RVV_MATRIX_DIM * RVV_MATRIX_DIM];
+    static float C_scalar[RVV_MATRIX_DIM * RVV_MATRIX_DIM];
+    static float C_vector[RVV_MATRIX_DIM * RVV_MATRIX_DIM];
+    char buf[32];
+    uint32_t dim = RVV_MATRIX_DIM;
+
+    /* Initialize test matrices */
+    for (uint32_t i = 0; i < dim * dim; i++) {
+        A[i] = (float) ((i % dim) + 1);
+        B[i] = (float) ((i / dim) + 1);
+    }
+
+    /* Scalar reference */
+    uint64_t start = rvv_read_mcycle();
+    scalar_matmul_f32(A, B, C_scalar, dim, dim, dim);
+    uint64_t scalar_cycles = rvv_read_mcycle() - start;
+
+    /* RVV implementation */
+    start = rvv_read_mcycle();
+    rvv_matmul_f32(A, B, C_vector, dim, dim, dim);
+    uint64_t vector_cycles = rvv_read_mcycle() - start;
+
+    /* Verify correctness */
+    bool passed = true;
+    for (uint32_t i = 0; i < dim * dim; i++) {
+        if (!rvv_float_eq(C_scalar[i], C_vector[i], 0.1f)) {
+            passed = false;
+            break;
+        }
+    }
+
+    record_test("Matrix multiply (float32)", passed);
+
+    console_puts("[RVV] matmul: scalar=");
+    int_to_str(scalar_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" vec=");
+    int_to_str(vector_cycles, buf, sizeof(buf));
+    console_puts(buf);
+    console_puts(" cycles\n");
+}
+
+static void run_phase5_tests(void)
+{
+    console_puts("[INFO] Running Phase 5 RVV tests...\n");
+    console_puts("\n");
+
+    /* Test 1: RVV Detection */
+    test_rvv_detect();
+    console_puts("\n");
+
+    /* Test 2: Integer vector add */
+    test_rvv_vec_add_i32();
+    console_puts("\n");
+
+    /* Test 3: Vector memcpy */
+    test_rvv_memcpy();
+    console_puts("\n");
+
+    /* Test 4: Float32 vector add */
+    test_rvv_vec_add_f32();
+    console_puts("\n");
+
+    /* Test 5: Dot product */
+    test_rvv_dot_product();
+    console_puts("\n");
+
+    /* Test 6: SAXPY */
+    test_rvv_saxpy();
+    console_puts("\n");
+
+    /* Test 7: Matrix multiply */
+    test_rvv_matmul();
+    console_puts("\n");
+}
+
+#endif /* ENABLE_RVV && NUM_HARTS <= 1 */
+
+/* =============================================================================
  * Banner
  * ============================================================================= */
 
@@ -382,6 +729,8 @@ static void print_banner(void)
         console_puts(buf);
         console_puts(" harts)\n");
     }
+#elif defined(ENABLE_RVV)
+    console_puts("Phase: 5 - RISC-V Vector Extension (RVV)\n");
 #else
     console_puts("Phase: 2 - Single-Core Bare-Metal\n");
 #endif
@@ -407,6 +756,9 @@ int main(void)
 #if NUM_HARTS > 1
     run_phase4_tests();
     print_summary(4);
+#elif defined(ENABLE_RVV)
+    run_phase5_tests();
+    print_summary(5);
 #else
     run_phase2_tests();
     print_summary(2);

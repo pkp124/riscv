@@ -3,7 +3,7 @@
 # =============================================================================
 
 # Define the application target
-add_executable(app
+set(APP_SOURCES
     src/startup.S
     src/main.c
     src/uart.c
@@ -11,6 +11,21 @@ add_executable(app
     src/platform.c
     src/smp.c
 )
+
+# Add RVV sources when enabled
+if(ENABLE_RVV)
+    list(APPEND APP_SOURCES
+        src/rvv/rvv_detect.c
+        src/rvv/vec_add.c
+        src/rvv/vec_memcpy.c
+        src/rvv/vec_dotprod.c
+        src/rvv/vec_saxpy.c
+        src/rvv/vec_matmul.c
+    )
+    message(STATUS "RVV workloads: ENABLED (6 source files)")
+endif()
+
+add_executable(app ${APP_SOURCES})
 
 # Set include directories
 target_include_directories(app PRIVATE
