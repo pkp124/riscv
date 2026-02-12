@@ -66,6 +66,7 @@ jobs:
               --suppress=missingIncludeSystem \
               --suppress=unusedFunction \
               --suppress=knownConditionTrueFalse \
+              --inline-suppr \
               --error-exitcode=1 \
               --xml --xml-version=2 \
               -I app/include/ \

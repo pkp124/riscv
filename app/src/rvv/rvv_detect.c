@@ -42,36 +42,28 @@ void rvv_print_info(void)
     uint64_t avl = 1024; /* Request a large AVL to see max VL */
 
     /* e8, m1: VL = VLEN/8 */
-    __asm__ __volatile__("vsetvli %0, %1, e8, m1, ta, ma"
-                         : "=r"(vl)
-                         : "r"(avl));
+    __asm__ __volatile__("vsetvli %0, %1, e8, m1, ta, ma" : "=r"(vl) : "r"(avl));
     console_puts("[RVV] VL(e8,m1)   = ");
     console_put_dec((uint64_t) vl, buf, sizeof(buf));
     console_puts(buf);
     console_puts("\n");
 
     /* e32, m1: VL = VLEN/32 */
-    __asm__ __volatile__("vsetvli %0, %1, e32, m1, ta, ma"
-                         : "=r"(vl)
-                         : "r"(avl));
+    __asm__ __volatile__("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
     console_puts("[RVV] VL(e32,m1)  = ");
     console_put_dec((uint64_t) vl, buf, sizeof(buf));
     console_puts(buf);
     console_puts("\n");
 
     /* e32, m4: VL = 4*VLEN/32 */
-    __asm__ __volatile__("vsetvli %0, %1, e32, m4, ta, ma"
-                         : "=r"(vl)
-                         : "r"(avl));
+    __asm__ __volatile__("vsetvli %0, %1, e32, m4, ta, ma" : "=r"(vl) : "r"(avl));
     console_puts("[RVV] VL(e32,m4)  = ");
     console_put_dec((uint64_t) vl, buf, sizeof(buf));
     console_puts(buf);
     console_puts("\n");
 
     /* e64, m1: VL = VLEN/64 */
-    __asm__ __volatile__("vsetvli %0, %1, e64, m1, ta, ma"
-                         : "=r"(vl)
-                         : "r"(avl));
+    __asm__ __volatile__("vsetvli %0, %1, e64, m1, ta, ma" : "=r"(vl) : "r"(avl));
     console_puts("[RVV] VL(e64,m1)  = ");
     console_put_dec((uint64_t) vl, buf, sizeof(buf));
     console_puts(buf);

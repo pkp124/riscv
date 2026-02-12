@@ -16,8 +16,7 @@
 
 #include "rvv/rvv_common.h"
 
-void rvv_matmul_f32(const float *A, const float *B, float *C,
-                    uint32_t m, uint32_t n, uint32_t k)
+void rvv_matmul_f32(const float *A, const float *B, float *C, uint32_t m, uint32_t n, uint32_t k)
 {
     /* Zero out C first */
     for (uint32_t i = 0; i < m * n; i++) {
@@ -32,32 +31,31 @@ void rvv_matmul_f32(const float *A, const float *B, float *C,
 
             /* Vectorize across columns of B[p][0..n-1] and C[i][0..n-1] */
             const float *b_row = &B[p * n];
+            // cppcheck-suppress constVariablePointer
             float *c_row = &C[i * n];
             size_t remaining = n;
             size_t vl;
 
-            __asm__ __volatile__(
-                "1:\n\t"
-                "vsetvli  %[vl], %[remaining], e32, m1, ta, ma\n\t"
-                "vle32.v  v0, (%[b_row])\n\t"    /* v0 = B[p][j..] */
-                "vle32.v  v1, (%[c_row])\n\t"    /* v1 = C[i][j..] */
-                "vfmacc.vf v1, %[a_ik], v0\n\t"  /* v1 += a_ik * v0 */
-                "vse32.v  v1, (%[c_row])\n\t"    /* C[i][j..] = v1 */
-                "slli     t0, %[vl], 2\n\t"
-                "add      %[b_row], %[b_row], t0\n\t"
-                "add      %[c_row], %[c_row], t0\n\t"
-                "sub      %[remaining], %[remaining], %[vl]\n\t"
-                "bnez     %[remaining], 1b\n\t"
-                : [vl] "=&r"(vl), [b_row] "+r"(b_row),
-                  [c_row] "+r"(c_row), [remaining] "+r"(remaining)
-                : [a_ik] "f"(a_ik)
-                : "t0", "v0", "v1", "memory");
+            __asm__ __volatile__("1:\n\t"
+                                 "vsetvli  %[vl], %[remaining], e32, m1, ta, ma\n\t"
+                                 "vle32.v  v0, (%[b_row])\n\t"   /* v0 = B[p][j..] */
+                                 "vle32.v  v1, (%[c_row])\n\t"   /* v1 = C[i][j..] */
+                                 "vfmacc.vf v1, %[a_ik], v0\n\t" /* v1 += a_ik * v0 */
+                                 "vse32.v  v1, (%[c_row])\n\t"   /* C[i][j..] = v1 */
+                                 "slli     t0, %[vl], 2\n\t"
+                                 "add      %[b_row], %[b_row], t0\n\t"
+                                 "add      %[c_row], %[c_row], t0\n\t"
+                                 "sub      %[remaining], %[remaining], %[vl]\n\t"
+                                 "bnez     %[remaining], 1b\n\t"
+                                 : [vl] "=&r"(vl), [b_row] "+r"(b_row), [c_row] "+r"(c_row),
+                                   [remaining] "+r"(remaining)
+                                 : [a_ik] "f"(a_ik)
+                                 : "t0", "v0", "v1", "memory");
         }
     }
 }
 
-void scalar_matmul_f32(const float *A, const float *B, float *C,
-                       uint32_t m, uint32_t n, uint32_t k)
+void scalar_matmul_f32(const float *A, const float *B, float *C, uint32_t m, uint32_t n, uint32_t k)
 {
     /* Zero out C */
     for (uint32_t i = 0; i < m * n; i++) {

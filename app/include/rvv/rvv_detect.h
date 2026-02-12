@@ -23,9 +23,9 @@
 #define MSTATUS_VS_SHIFT 9
 #define MSTATUS_VS_MASK (3UL << MSTATUS_VS_SHIFT)
 #define MSTATUS_VS_OFF (0UL << MSTATUS_VS_SHIFT)     /* Vector unit disabled */
-#define MSTATUS_VS_INITIAL (1UL << MSTATUS_VS_SHIFT)  /* Vector unit initial */
-#define MSTATUS_VS_CLEAN (2UL << MSTATUS_VS_SHIFT)    /* Vector unit clean */
-#define MSTATUS_VS_DIRTY (3UL << MSTATUS_VS_SHIFT)    /* Vector unit dirty */
+#define MSTATUS_VS_INITIAL (1UL << MSTATUS_VS_SHIFT) /* Vector unit initial */
+#define MSTATUS_VS_CLEAN (2UL << MSTATUS_VS_SHIFT)   /* Vector unit clean */
+#define MSTATUS_VS_DIRTY (3UL << MSTATUS_VS_SHIFT)   /* Vector unit dirty */
 
 /** misa bit for V extension */
 #define MISA_V_BIT (1UL << ('V' - 'A'))

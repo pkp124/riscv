@@ -44,8 +44,7 @@ float rvv_dot_product_f32(const float *a, const float *b, size_t n)
         "bnez       %[n], 1b\n\t"
         /* Extract result from v4[0] */
         "vfmv.f.s   %[result], v4\n\t"
-        : [vl] "=&r"(vl), [a] "+r"(a), [b] "+r"(b), [n] "+r"(n),
-          [result] "=f"(result)
+        : [vl] "=&r"(vl), [a] "+r"(a), [b] "+r"(b), [n] "+r"(n), [result] "=f"(result)
         :
         : "t0", "ft0", "v0", "v1", "v2", "v4", "memory");
 

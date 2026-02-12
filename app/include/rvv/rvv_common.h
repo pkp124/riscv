@@ -33,10 +33,10 @@
  * @brief Result structure for RVV benchmark comparison
  */
 typedef struct {
-    const char *name;        /**< Workload name */
-    uint64_t scalar_cycles;  /**< Cycles for scalar implementation */
-    uint64_t vector_cycles;  /**< Cycles for vector implementation */
-    int passed;              /**< Correctness check result (1=pass, 0=fail) */
+    const char *name;       /**< Workload name */
+    uint64_t scalar_cycles; /**< Cycles for scalar implementation */
+    uint64_t vector_cycles; /**< Cycles for vector implementation */
+    int passed;             /**< Correctness check result (1=pass, 0=fail) */
 } rvv_bench_result_t;
 
 /* =============================================================================
@@ -143,13 +143,12 @@ void scalar_saxpy(float a, const float *x, float *y, size_t n);
  * @param n Columns of B and C
  * @param k Columns of A / rows of B
  */
-void rvv_matmul_f32(const float *A, const float *B, float *C,
-                    uint32_t m, uint32_t n, uint32_t k);
+void rvv_matmul_f32(const float *A, const float *B, float *C, uint32_t m, uint32_t n, uint32_t k);
 
 /**
  * @brief Scalar reference: matrix multiply
  */
-void scalar_matmul_f32(const float *A, const float *B, float *C,
-                       uint32_t m, uint32_t n, uint32_t k);
+void scalar_matmul_f32(const float *A, const float *B, float *C, uint32_t m, uint32_t n,
+                       uint32_t k);
 
 #endif /* RVV_COMMON_H */

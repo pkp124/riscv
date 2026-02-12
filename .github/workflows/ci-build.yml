@@ -61,6 +61,7 @@ jobs:
               --suppress=missingIncludeSystem \
               --suppress=unusedFunction \
               --suppress=knownConditionTrueFalse \
+              --inline-suppr \
               --error-exitcode=1 \
               -I app/include/ \
               app/src/
@@ -336,6 +337,57 @@ jobs:
               echo "FAIL: Barrier test did not pass"
               PASS=false
             fi
+          elif [ "${{ matrix.rvv }}" = "1" ]; then
+            # Phase 5: RVV validation
+            if grep -q "Phase 5 complete" output.log; then
+              echo "PASS: Phase 5 RVV application completed successfully"
+            else
+              echo "FAIL: Phase 5 RVV application did not complete"
+              PASS=false
+            fi
+
+            # RVV-specific checks
+            if grep -q "\[RVV\] Available" output.log; then
+              echo "PASS: RVV detected as available"
+            else
+              echo "FAIL: RVV not detected"
+              PASS=false
+            fi
+
+            if grep -q "\[RVV\] VLEN  = [0-9]" output.log; then
+              echo "PASS: VLEN detected"
+            else
+              echo "FAIL: VLEN not detected"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Vec add (int32): PASS" output.log; then
+              echo "PASS: Vector add (int32) test passed"
+            else
+              echo "FAIL: Vector add (int32) test did not pass"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Dot product (float32): PASS" output.log; then
+              echo "PASS: Dot product test passed"
+            else
+              echo "FAIL: Dot product test did not pass"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Matrix multiply (float32): PASS" output.log; then
+              echo "PASS: Matrix multiply test passed"
+            else
+              echo "FAIL: Matrix multiply test did not pass"
+              PASS=false
+            fi
+
+            if grep -q "\[RESULT\] Phase 5 tests: 7/7 PASS" output.log; then
+              echo "PASS: All 7 RVV tests passed"
+            else
+              echo "FAIL: Not all RVV tests passed"
+              PASS=false
+            fi
           else
             if grep -q "Phase 2 complete" output.log; then
               echo "PASS: Phase 2 application completed successfully"
@@ -525,6 +577,35 @@ jobs:
               echo "PASS: Atomic operations test passed on Spike"
             else
               echo "FAIL: Atomic operations test did not pass on Spike"
+              PASS=false
+            fi
+          elif [ "${{ matrix.rvv }}" = "1" ]; then
+            # Phase 5: RVV validation on Spike
+            if grep -q "Phase 5 complete" output.log; then
+              echo "PASS: Phase 5 RVV application completed on Spike"
+            else
+              echo "FAIL: Phase 5 RVV application did not complete on Spike"
+              PASS=false
+            fi
+
+            if grep -q "\[RVV\] Available" output.log; then
+              echo "PASS: RVV detected on Spike"
+            else
+              echo "FAIL: RVV not detected on Spike"
+              PASS=false
+            fi
+
+            if grep -q "\[TEST\] Vec add (int32): PASS" output.log; then
+              echo "PASS: Vector add (int32) passed on Spike"
+            else
+              echo "FAIL: Vector add (int32) did not pass on Spike"
+              PASS=false
+            fi
+
+            if grep -q "\[RESULT\] Phase 5 tests: 7/7 PASS" output.log; then
+              echo "PASS: All 7 RVV tests passed on Spike"
+            else
+              echo "FAIL: Not all RVV tests passed on Spike"
               PASS=false
             fi
           else
