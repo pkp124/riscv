@@ -213,7 +213,117 @@ endif()
 # Phase 3: Cross-Platform Tests (Spike)
 # =============================================================================
 
-# To be implemented in Phase 3
+# Test 1: Boot on Spike and print "Hello RISC-V" via HTIF
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_boot_hello
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_boot_hello PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 30
+        LABELS "phase3;spike;smoke"
+    )
+endif()
+
+# Test 2: CSR read - Hart ID on Spike
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_csr_hartid
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_csr_hartid PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[CSR\\] Hart ID: 0"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 30
+        LABELS "phase3;spike;csr"
+    )
+endif()
+
+# Test 3: CSR read - mstatus on Spike
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_csr_mstatus
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_csr_mstatus PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[CSR\\] mstatus:"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 30
+        LABELS "phase3;spike;csr"
+    )
+endif()
+
+# Test 4: HTIF console output on Spike
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_htif_output
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_htif_output PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[UART\\] Character output: PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR"
+        TIMEOUT 30
+        LABELS "phase3;spike;htif"
+    )
+endif()
+
+# Test 5: Memory operations on Spike
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_memory_ops
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_memory_ops PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Memory operations: PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR"
+        TIMEOUT 30
+        LABELS "phase3;spike;memory"
+    )
+endif()
+
+# Test 6: Function calls on Spike
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_function_calls
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_function_calls PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Function calls: PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR"
+        TIMEOUT 30
+        LABELS "phase3;spike;functional"
+    )
+endif()
+
+# Test 7: All tests pass on Spike (integration)
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_complete
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 2 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "0/[0-9]+ PASS"
+        TIMEOUT 30
+        LABELS "phase3;spike;integration"
+    )
+endif()
+
+# Test 8: Platform name reports "Spike"
+if(TARGET app AND SPIKE)
+    add_test(
+        NAME phase3_spike_platform_name
+        COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase3_spike_platform_name PROPERTIES
+        PASS_REGULAR_EXPRESSION "Platform: Spike"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 30
+        LABELS "phase3;spike;smoke"
+    )
+endif()
 
 # =============================================================================
 # Phase 4: SMP Tests

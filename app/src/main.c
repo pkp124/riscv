@@ -290,5 +290,8 @@ int main(void)
     /* Application complete */
     console_puts("[INFO] Phase 2 complete. System halted.\n");
 
+    /* Clean shutdown (Spike needs HTIF exit, QEMU uses WFI loop) */
+    platform_exit(0);
+
     return 0;
 }
