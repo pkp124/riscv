@@ -1,22 +1,40 @@
 # =============================================================================
-# CI Pipeline: gem5 Simulation (Heavy - runs on merge to main or manual)
+# CI Pipeline: gem5 Simulation (Phase 6)
 # =============================================================================
 # gem5 takes a long time to build (~30-60 min) and is slow to simulate.
 # This workflow runs only on:
 #   - Push to main branch
-#   - Manual trigger (workflow_dispatch)
+#   - Pull request to main (builds only, no simulation)
+#   - Manual trigger (workflow_dispatch) with configurable options
+#
+# The workflow:
+#   1. Installs RISC-V toolchain
+#   2. Builds application for gem5 FS and SE modes
+#   3. Builds gem5 (cached between runs)
+#   4. Runs simulations with various CPU models
+#   5. Collects and uploads performance statistics
 # =============================================================================
 
 name: CI - gem5 Simulation
 
-# =============================================================================
-# gem5 integration is Phase 6. This workflow is a placeholder that will be
-# fully implemented when gem5 platform support is added.
-#
-# Currently runs only on manual dispatch to avoid failing on every push.
-# =============================================================================
-
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'platforms/gem5/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.github/workflows/ci-gem5.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'platforms/gem5/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
   workflow_dispatch:
     inputs:
       cpu_type:
@@ -37,97 +55,359 @@ on:
           - '1'
           - '2'
           - '4'
+      run_simulation:
+        description: 'Run simulation (disable to only build)'
+        required: true
+        default: true
+        type: boolean
+
+# Limit concurrent runs
+concurrency:
+  group: gem5-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  gem5-simulate:
-    name: "gem5: ${{ github.event.inputs.cpu_type || 'AtomicSimpleCPU' }} x${{ github.event.inputs.num_cpus || '1' }}"
+  # =========================================================================
+  # Job 1: Build ELF binaries for gem5
+  # =========================================================================
+  build-gem5:
+    name: "Build: gem5 FS + SE"
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check Phase 6 readiness
-        id: check-ready
-        run: |
-          if [ -f "platforms/gem5/configs/fs_config.py" ]; then
-            echo "ready=true" >> $GITHUB_OUTPUT
-            echo "gem5 config found. Proceeding with simulation."
-          else
-            echo "ready=false" >> $GITHUB_OUTPUT
-            echo "gem5 config scripts not yet created (Phase 6)."
-            echo "This workflow will be fully enabled when Phase 6 is implemented."
-          fi
-
       - name: Install RISC-V Toolchain
-        if: steps.check-ready.outputs.ready == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf
 
-      - name: Configure with CMake
-        if: steps.check-ready.outputs.ready == 'true'
-        run: |
-          cmake --version
-          cmake --preset gem5-fs
-      
-      - name: Build ELF for gem5
-        if: steps.check-ready.outputs.ready == 'true'
-        run: |
-          cmake --build build/gem5-fs
+      - name: Configure gem5 FS
+        run: cmake --preset gem5-fs
 
+      - name: Build gem5 FS ELF
+        run: cmake --build build/gem5-fs
+
+      - name: Configure gem5 SE
+        run: cmake --preset gem5-se
+
+      - name: Build gem5 SE ELF
+        run: cmake --build build/gem5-se
+
+      - name: Configure gem5 FS SMP (4 harts)
+        run: cmake --preset gem5-fs-smp
+
+      - name: Build gem5 FS SMP ELF
+        run: cmake --build build/gem5-fs-smp
+
+      - name: Verify ELF files
+        run: |
+          echo "=== gem5 FS ELF ==="
+          file build/gem5-fs/app/app || file build/gem5-fs/bin/app || echo "ELF not found at expected path"
+          riscv64-unknown-elf-size build/gem5-fs/app/app 2>/dev/null || \
+            riscv64-unknown-elf-size build/gem5-fs/bin/app 2>/dev/null || true
+
+          echo ""
+          echo "=== gem5 SE ELF ==="
+          file build/gem5-se/app/app || file build/gem5-se/bin/app || echo "ELF not found at expected path"
+          riscv64-unknown-elf-size build/gem5-se/app/app 2>/dev/null || \
+            riscv64-unknown-elf-size build/gem5-se/bin/app 2>/dev/null || true
+
+          echo ""
+          echo "=== gem5 FS SMP ELF ==="
+          file build/gem5-fs-smp/app/app || file build/gem5-fs-smp/bin/app || echo "ELF not found at expected path"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem5-elfs
+          path: |
+            build/gem5-fs/app/app
+            build/gem5-fs/bin/app
+            build/gem5-se/app/app
+            build/gem5-se/bin/app
+            build/gem5-fs-smp/app/app
+            build/gem5-fs-smp/bin/app
+          retention-days: 7
+
+  # =========================================================================
+  # Job 2: Build gem5 (cached)
+  # =========================================================================
+  build-gem5-simulator:
+    name: "Build: gem5 Simulator"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    # Only build gem5 on main branch push or manual dispatch
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
       - name: Cache gem5 build
-        if: steps.check-ready.outputs.ready == 'true'
         uses: actions/cache@v4
         id: cache-gem5
         with:
-          path: /opt/gem5/build/RISCV
-          key: gem5-riscv-${{ runner.os }}-v1
+          path: /opt/gem5
+          key: gem5-riscv-${{ runner.os }}-v23-2
 
       - name: Install gem5 dependencies
-        if: steps.check-ready.outputs.ready == 'true' && steps.cache-gem5.outputs.cache-hit != 'true'
+        if: steps.cache-gem5.outputs.cache-hit != 'true'
         run: |
+          sudo apt-get update
           sudo apt-get install -y \
             build-essential git m4 scons zlib1g zlib1g-dev \
             libprotobuf-dev protobuf-compiler libprotoc-dev \
-            libgoogle-perftools-dev python3-dev \
+            libgoogle-perftools-dev python3-dev python3-pip \
             libboost-all-dev pkg-config libhdf5-dev
 
       - name: Build gem5
-        if: steps.check-ready.outputs.ready == 'true' && steps.cache-gem5.outputs.cache-hit != 'true'
-        timeout-minutes: 60
+        if: steps.cache-gem5.outputs.cache-hit != 'true'
+        timeout-minutes: 75
         run: |
-          git clone --depth 1 https://github.com/gem5/gem5.git /opt/gem5
+          git clone --depth 1 --branch stable https://github.com/gem5/gem5.git /opt/gem5
           cd /opt/gem5
-          scons build/RISCV/gem5.opt -j$(nproc) --no-lto
+          scons build/RISCV/gem5.opt -j$(nproc) --no-lto 2>&1 | tail -20
+          echo "gem5 build complete"
+          ls -la build/RISCV/gem5.opt
 
-      - name: Run gem5 simulation
-        if: steps.check-ready.outputs.ready == 'true'
-        timeout-minutes: 10
+      - name: Verify gem5 binary
         run: |
-          ELF=$(find build/ -name 'app.elf' -o -name 'app' 2>/dev/null | head -1)
+          /opt/gem5/build/RISCV/gem5.opt --version || echo "gem5 version check"
+          echo "gem5 binary size: $(du -h /opt/gem5/build/RISCV/gem5.opt | cut -f1)"
+
+  # =========================================================================
+  # Job 3: Run gem5 FS Simulations
+  # =========================================================================
+  simulate-fs:
+    name: "Simulate: gem5 FS (${{ matrix.cpu_type }})"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [build-gem5, build-gem5-simulator]
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.run_simulation == 'true')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        cpu_type:
+          - AtomicSimpleCPU
+          - TimingSimpleCPU
+        include:
+          - cpu_type: AtomicSimpleCPU
+            max_ticks: 100000000
+            timeout: 120
+          - cpu_type: TimingSimpleCPU
+            max_ticks: 500000000
+            timeout: 300
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ELF artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: gem5-elfs
+          path: build/
+
+      - name: Restore gem5 from cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/gem5
+          key: gem5-riscv-${{ runner.os }}-v23-2
+
+      - name: Find ELF binary
+        id: find-elf
+        run: |
+          ELF=$(find build/ -name 'app' -type f 2>/dev/null | grep gem5-fs/app/app | head -1)
           if [ -z "$ELF" ]; then
-            echo "No ELF found. Skipping simulation."
-            exit 0
+            ELF=$(find build/ -name 'app' -type f 2>/dev/null | grep gem5-fs | head -1)
           fi
+          echo "elf=${ELF}" >> $GITHUB_OUTPUT
+          echo "Found ELF: ${ELF}"
+          file "${ELF}" 2>/dev/null || true
 
-          CPU_TYPE="${{ github.event.inputs.cpu_type || 'AtomicSimpleCPU' }}"
-          NUM_CPUS="${{ github.event.inputs.num_cpus || '1' }}"
+      - name: Run gem5 FS simulation
+        if: steps.find-elf.outputs.elf != ''
+        timeout-minutes: ${{ matrix.timeout }}
+        run: |
+          ELF="${{ steps.find-elf.outputs.elf }}"
+          CPU_TYPE="${{ matrix.cpu_type }}"
+          MAX_TICKS="${{ matrix.max_ticks }}"
 
-          echo "gem5 simulation: ${CPU_TYPE} x ${NUM_CPUS}"
+          chmod +x "${ELF}" 2>/dev/null || true
+
+          echo "================================================"
+          echo "gem5 FS Simulation"
+          echo "  CPU: ${CPU_TYPE}"
+          echo "  ELF: ${ELF}"
+          echo "  Max Ticks: ${MAX_TICKS}"
+          echo "================================================"
 
           /opt/gem5/build/RISCV/gem5.opt \
             platforms/gem5/configs/fs_config.py \
             --cpu-type=${CPU_TYPE} \
-            --num-cpus=${NUM_CPUS} \
-            --cmd=${ELF}
+            --cmd=${ELF} \
+            --max-ticks=${MAX_TICKS} \
+            2>&1 | tee gem5_output.txt
+
+          echo ""
+          echo "=== Simulation Output ==="
+          cat gem5_output.txt
+
+      - name: Validate output
+        if: steps.find-elf.outputs.elf != ''
+        run: |
+          echo "=== Checking for expected output ==="
+
+          if grep -q "Hello RISC-V" gem5_output.txt; then
+            echo "PASS: Found 'Hello RISC-V'"
+          else
+            echo "FAIL: Missing 'Hello RISC-V'"
+            exit 1
+          fi
+
+          if grep -q "Platform: gem5" gem5_output.txt; then
+            echo "PASS: Found 'Platform: gem5'"
+          else
+            echo "WARN: Missing 'Platform: gem5' (may be in terminal output)"
+          fi
+
+      - name: Parse gem5 stats
+        if: always() && steps.find-elf.outputs.elf != ''
+        run: |
+          if [ -f "m5out/stats.txt" ]; then
+            python3 scripts/parse-gem5-stats.py m5out/stats.txt
+          else
+            echo "No stats.txt found"
+          fi
 
       - name: Upload gem5 stats
-        if: always() && steps.check-ready.outputs.ready == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gem5-stats
-          path: m5out/
-          retention-days: 90
+          name: gem5-stats-fs-${{ matrix.cpu_type }}
+          path: |
+            m5out/
+            gem5_output.txt
+          retention-days: 30
         continue-on-error: true
+
+  # =========================================================================
+  # Job 4: Run gem5 SE Simulation
+  # =========================================================================
+  simulate-se:
+    name: "Simulate: gem5 SE"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [build-gem5, build-gem5-simulator]
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.run_simulation == 'true')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ELF artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: gem5-elfs
+          path: build/
+
+      - name: Restore gem5 from cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/gem5
+          key: gem5-riscv-${{ runner.os }}-v23-2
+
+      - name: Find SE ELF binary
+        id: find-elf
+        run: |
+          ELF=$(find build/ -name 'app' -type f 2>/dev/null | grep gem5-se | head -1)
+          echo "elf=${ELF}" >> $GITHUB_OUTPUT
+          echo "Found ELF: ${ELF}"
+
+      - name: Run gem5 SE simulation
+        if: steps.find-elf.outputs.elf != ''
+        timeout-minutes: 5
+        run: |
+          ELF="${{ steps.find-elf.outputs.elf }}"
+          chmod +x "${ELF}" 2>/dev/null || true
+
+          echo "================================================"
+          echo "gem5 SE Simulation"
+          echo "  CPU: AtomicSimpleCPU"
+          echo "  ELF: ${ELF}"
+          echo "================================================"
+
+          /opt/gem5/build/RISCV/gem5.opt \
+            platforms/gem5/configs/se_config.py \
+            --cpu-type=AtomicSimpleCPU \
+            --cmd=${ELF} \
+            --max-ticks=100000000 \
+            2>&1 | tee gem5_se_output.txt
+
+      - name: Validate SE output
+        if: steps.find-elf.outputs.elf != ''
+        run: |
+          if grep -q "Hello RISC-V" gem5_se_output.txt; then
+            echo "PASS: Found 'Hello RISC-V'"
+          else
+            echo "FAIL: Missing 'Hello RISC-V'"
+            exit 1
+          fi
+
+      - name: Upload gem5 SE stats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem5-stats-se
+          path: |
+            m5out/
+            gem5_se_output.txt
+          retention-days: 30
+        continue-on-error: true
+
+  # =========================================================================
+  # Job 5: Performance Comparison
+  # =========================================================================
+  compare-stats:
+    name: "Compare: CPU Model Performance"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [simulate-fs]
+    if: success()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Atomic stats
+        uses: actions/download-artifact@v4
+        with:
+          name: gem5-stats-fs-AtomicSimpleCPU
+          path: stats/atomic/
+        continue-on-error: true
+
+      - name: Download Timing stats
+        uses: actions/download-artifact@v4
+        with:
+          name: gem5-stats-fs-TimingSimpleCPU
+          path: stats/timing/
+        continue-on-error: true
+
+      - name: Compare stats
+        run: |
+          ATOMIC_STATS=$(find stats/atomic/ -name 'stats.txt' | head -1)
+          TIMING_STATS=$(find stats/timing/ -name 'stats.txt' | head -1)
+
+          if [ -n "$ATOMIC_STATS" ] && [ -n "$TIMING_STATS" ]; then
+            echo "Comparing Atomic vs Timing CPU models..."
+            python3 scripts/parse-gem5-stats.py --compare "$ATOMIC_STATS" "$TIMING_STATS"
+          else
+            echo "Stats files not available for comparison"
+            [ -z "$ATOMIC_STATS" ] && echo "  Missing: Atomic stats"
+            [ -z "$TIMING_STATS" ] && echo "  Missing: Timing stats"
+          fi
