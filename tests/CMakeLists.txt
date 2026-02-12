@@ -805,7 +805,232 @@ endif()
 # Phase 6: gem5 Tests
 # =============================================================================
 
-# To be implemented in Phase 6
+# Phase 6 gem5 FS tests: Single-core full system mode
+# gem5 FS reuses the same application binary as QEMU (UART I/O, M-mode CSRs).
+# The binary is identical to QEMU build but uses gem5-specific linker script.
+if(TARGET app AND GEM5_OPT AND PLATFORM STREQUAL "gem5" AND GEM5_MODE STREQUAL "fs" AND NUM_HARTS EQUAL 1 AND NOT ENABLE_RVV)
+
+    # Test 1: Boot on gem5 FS mode (AtomicSimpleCPU)
+    add_test(
+        NAME phase6_gem5_fs_boot_hello
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_fs_boot_hello PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "panic|fatal|Error"
+        TIMEOUT 120
+        LABELS "phase6;gem5;fs;smoke"
+    )
+
+    # Test 2: CSR read - Hart ID on gem5
+    add_test(
+        NAME phase6_gem5_fs_csr_hartid
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_fs_csr_hartid PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[CSR\\] Hart ID: 0"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 120
+        LABELS "phase6;gem5;fs;csr"
+    )
+
+    # Test 3: CSR read - mstatus on gem5
+    add_test(
+        NAME phase6_gem5_fs_csr_mstatus
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_fs_csr_mstatus PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[CSR\\] mstatus:"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 120
+        LABELS "phase6;gem5;fs;csr"
+    )
+
+    # Test 4: All Phase 2 tests pass on gem5 FS mode (integration)
+    add_test(
+        NAME phase6_gem5_fs_complete
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_fs_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 2 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "0/[0-9]+ PASS"
+        TIMEOUT 120
+        LABELS "phase6;gem5;fs;integration"
+    )
+
+    # Test 5: Platform name reports "gem5"
+    add_test(
+        NAME phase6_gem5_fs_platform_name
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_fs_platform_name PROPERTIES
+        PASS_REGULAR_EXPRESSION "Platform: gem5"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 120
+        LABELS "phase6;gem5;fs;smoke"
+    )
+
+    # Test 6: Boot on gem5 FS with TimingSimpleCPU
+    add_test(
+        NAME phase6_gem5_fs_timing_boot
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=TimingSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=500000000
+    )
+    set_tests_properties(phase6_gem5_fs_timing_boot PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 180
+        LABELS "phase6;gem5;fs;timing"
+    )
+
+    # Test 7: Boot on gem5 FS with MinorCPU (in-order pipeline)
+    add_test(
+        NAME phase6_gem5_fs_minor_boot
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=MinorCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=500000000
+    )
+    set_tests_properties(phase6_gem5_fs_minor_boot PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 300
+        LABELS "phase6;gem5;fs;minor"
+    )
+
+    # Test 8: gem5 generates stats file
+    # After simulation, gem5 writes m5out/stats.txt with performance data
+    add_test(
+        NAME phase6_gem5_fs_stats_generated
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_fs_stats_generated PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[gem5\\] Stats file:"
+        TIMEOUT 120
+        LABELS "phase6;gem5;fs;stats"
+    )
+
+endif()
+
+# Phase 6 gem5 FS SMP tests: Multi-core full system mode
+if(TARGET app AND GEM5_OPT AND PLATFORM STREQUAL "gem5" AND GEM5_MODE STREQUAL "fs" AND NUM_HARTS GREATER 1)
+
+    # Test: SMP Boot on gem5
+    add_test(
+        NAME phase6_gem5_fs_smp_boot
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --num-cpus=${NUM_HARTS}
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=500000000
+    )
+    set_tests_properties(phase6_gem5_fs_smp_boot PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[SMP\\] All ${NUM_HARTS} harts online"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 300
+        LABELS "phase6;gem5;fs;smp;smoke"
+    )
+
+    # Test: All Phase 4 SMP tests pass on gem5
+    add_test(
+        NAME phase6_gem5_fs_smp_complete
+        COMMAND ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --num-cpus=${NUM_HARTS}
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=500000000
+    )
+    set_tests_properties(phase6_gem5_fs_smp_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 4 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "0/[0-9]+ PASS"
+        TIMEOUT 300
+        LABELS "phase6;gem5;fs;smp;integration"
+    )
+
+endif()
+
+# Phase 6 gem5 SE tests: Syscall emulation mode
+if(TARGET app AND GEM5_OPT AND PLATFORM STREQUAL "gem5" AND GEM5_MODE STREQUAL "se" AND NUM_HARTS EQUAL 1 AND NOT ENABLE_RVV)
+
+    # Test 1: Boot on gem5 SE mode
+    add_test(
+        NAME phase6_gem5_se_boot_hello
+        COMMAND ${GEM5_OPT}
+            ${GEM5_SE_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_se_boot_hello PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "panic|fatal|Error"
+        TIMEOUT 120
+        LABELS "phase6;gem5;se;smoke"
+    )
+
+    # Test 2: All Phase 2 tests pass on gem5 SE (integration)
+    add_test(
+        NAME phase6_gem5_se_complete
+        COMMAND ${GEM5_OPT}
+            ${GEM5_SE_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_se_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 2 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "0/[0-9]+ PASS"
+        TIMEOUT 120
+        LABELS "phase6;gem5;se;integration"
+    )
+
+    # Test 3: Platform name in SE mode
+    add_test(
+        NAME phase6_gem5_se_platform_name
+        COMMAND ${GEM5_OPT}
+            ${GEM5_SE_CONFIG}
+            --cpu-type=AtomicSimpleCPU
+            --cmd=$<TARGET_FILE:app>
+            --max-ticks=100000000
+    )
+    set_tests_properties(phase6_gem5_se_platform_name PROPERTIES
+        PASS_REGULAR_EXPRESSION "Platform: gem5"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 120
+        LABELS "phase6;gem5;se;smoke"
+    )
+
+endif()
 
 # =============================================================================
 # Phase 7: Renode Tests
