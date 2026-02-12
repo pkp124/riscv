@@ -203,7 +203,17 @@
     {
       "name": "qemu-rvv",
       "configurePreset": "qemu-rvv",
-      "displayName": "Build QEMU RVV"
+      "displayName": "Build QEMU RVV (VLEN=128)"
+    },
+    {
+      "name": "qemu-rvv-256",
+      "configurePreset": "qemu-rvv-256",
+      "displayName": "Build QEMU RVV (VLEN=256)"
+    },
+    {
+      "name": "spike-rvv",
+      "configurePreset": "spike-rvv",
+      "displayName": "Build Spike RVV"
     },
     {
       "name": "spike",
@@ -257,7 +267,23 @@
     {
       "name": "qemu-rvv",
       "configurePreset": "qemu-rvv",
-      "displayName": "Test QEMU RVV",
+      "displayName": "Test QEMU RVV (VLEN=128)",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "qemu-rvv-256",
+      "configurePreset": "qemu-rvv-256",
+      "displayName": "Test QEMU RVV (VLEN=256)",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "spike-rvv",
+      "configurePreset": "spike-rvv",
+      "displayName": "Test Spike RVV",
       "output": {
         "outputOnFailure": true
       }

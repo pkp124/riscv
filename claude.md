@@ -15,26 +15,28 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 
 ## Current Project Status
 
-**Completed:** Phase 0 (Design), Phase 1 (Build System), Phase 2 (QEMU), Phase 3 (Spike), Phase 4 (SMP)  
-**Next Phase:** Phase 5 (RISC-V Vector Extension - RVV 1.0)  
+**Completed:** Phase 0-5 (Design, Build System, QEMU, Spike, SMP, RVV)  
+**Next Phase:** Phase 6 (gem5 Integration)  
 **Last Updated:** 2026-02-12  
 
 ### What Exists
 ✅ Comprehensive design documents (docs/00-06)  
 ✅ Devcontainer configuration (.devcontainer/)  
 ✅ Full CI pipeline (lint, build matrix, QEMU + Spike simulations, cross-validation)  
-✅ CMake build system with 10+ presets (CMakeLists.txt, CMakePresets.json)  
+✅ CMake build system with 15+ presets (CMakeLists.txt, CMakePresets.json)  
 ✅ RISC-V toolchain file (cmake/toolchain/riscv64-elf.cmake)  
-✅ CTest: 7 QEMU single-core + 7 QEMU SMP + 8 Spike single-core + 5 Spike SMP tests  
+✅ CTest: 7 QEMU Phase 2 + 7 QEMU Phase 4 + 10 QEMU Phase 5 + 8 Spike Phase 3 + 5 Spike Phase 4 + 9 Spike Phase 5 tests  
 ✅ Application source (startup.S, main.c, uart.c, htif.c, platform.c, smp.c)  
 ✅ Platform headers (platform.h, csr.h, uart.h, htif.h, console.h, smp.h, atomic.h)  
+✅ RVV infrastructure (rvv/rvv_detect.h, rvv/rvv_common.h)  
+✅ RVV workloads (vec_add, vec_memcpy, vec_dotprod, vec_saxpy, vec_matmul)  
 ✅ Linker scripts (qemu-virt.ld, spike.ld) with SMP stack allocation  
 ✅ Setup scripts (setup-toolchain.sh, setup-simulators.sh, verify-environment.sh)  
 ✅ Cross-platform validation (QEMU vs Spike output functionally identical)  
 ✅ SMP support: spinlocks, barriers, atomic ops, multi-hart boot (2-8 harts)  
+✅ RVV support: 7 workloads, VLEN-agnostic, inline asm, scalar verification  
 
 ### What Doesn't Exist Yet
-❌ RVV workloads (Phase 5)  
 ❌ gem5 platform support (Phase 6)  
 ❌ Renode platform support (Phase 7)  
 ❌ Platform launch configs (platforms/)
@@ -148,7 +150,13 @@ Common DRAM base: `0x8000_0000` (2 GiB mark)
 │   │   ├── uart.c             # UART driver (QEMU/gem5)
 │   │   ├── htif.c             # HTIF driver (Spike)
 │   │   ├── smp.c              # SMP support
-│   │   └── rvv/               # RVV workloads
+│   │   └── rvv/               # RVV workloads (Phase 5)
+│   │       ├── rvv_detect.c   # RVV capability detection
+│   │       ├── vec_add.c      # Integer & float vector add
+│   │       ├── vec_memcpy.c   # Vectorized memory copy
+│   │       ├── vec_dotprod.c  # Dot product with reduction
+│   │       ├── vec_saxpy.c    # SAXPY (y = a*x + y)
+│   │       └── vec_matmul.c   # Matrix multiplication
 │   ├── include/               # Headers
 │   └── linker/                # Linker scripts
 │       ├── qemu-virt.ld
