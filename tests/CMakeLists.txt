@@ -83,8 +83,8 @@ endif()
 # Phase 2: Single-Core Tests (QEMU)
 # =============================================================================
 
-# Phase 2 QEMU tests: Only for single-core builds (NUM_HARTS == 1)
-if(TARGET app AND QEMU_SYSTEM_RISCV64 AND NUM_HARTS EQUAL 1)
+# Phase 2 QEMU tests: Only for single-core builds (NUM_HARTS == 1) without RVV
+if(TARGET app AND QEMU_SYSTEM_RISCV64 AND NUM_HARTS EQUAL 1 AND NOT ENABLE_RVV)
 
     # Test 1: Boot and print "Hello RISC-V"
     add_test(
@@ -204,8 +204,8 @@ endif()
 # Phase 3: Cross-Platform Tests (Spike)
 # =============================================================================
 
-# Phase 3 Spike tests: Only for single-core builds (NUM_HARTS == 1)
-if(TARGET app AND SPIKE AND NUM_HARTS EQUAL 1)
+# Phase 3 Spike tests: Only for single-core builds (NUM_HARTS == 1) without RVV
+if(TARGET app AND SPIKE AND NUM_HARTS EQUAL 1 AND NOT ENABLE_RVV)
     add_test(
         NAME phase3_spike_boot_hello
         COMMAND ${SPIKE} --isa=rv64gc $<TARGET_FILE:app>
@@ -506,10 +506,300 @@ if(TARGET app AND SPIKE AND NUM_HARTS GREATER 1)
 endif()
 
 # =============================================================================
-# Phase 5: RVV Tests
+# Phase 5: RVV Tests (QEMU)
 # =============================================================================
 
-# To be implemented in Phase 5
+# Phase 5 QEMU tests: Single-core with RVV enabled
+if(TARGET app AND QEMU_SYSTEM_RISCV64 AND ENABLE_RVV AND NUM_HARTS EQUAL 1)
+
+    # Test 1: RVV Detection - check misa V-bit
+    add_test(
+        NAME phase5_qemu_rvv_detect
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_detect PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] RVV detection: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] RVV detection: FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;smoke"
+    )
+
+    # Test 2: RVV VLEN detection
+    add_test(
+        NAME phase5_qemu_rvv_vlen
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_vlen PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RVV\\] VLEN  = ${VLEN} bits"
+        FAIL_REGULAR_EXPRESSION "\\[RVV\\] Not available"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;detect"
+    )
+
+    # Test 3: Integer vector add
+    add_test(
+        NAME phase5_qemu_rvv_vec_add_i32
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_vec_add_i32 PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Vec add \\(int32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Vec add \\(int32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;functional"
+    )
+
+    # Test 4: Vector memcpy
+    add_test(
+        NAME phase5_qemu_rvv_memcpy
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_memcpy PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Vec memcpy: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Vec memcpy: FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;functional"
+    )
+
+    # Test 5: Float32 vector add
+    add_test(
+        NAME phase5_qemu_rvv_vec_add_f32
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_vec_add_f32 PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Vec add \\(float32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Vec add \\(float32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;functional"
+    )
+
+    # Test 6: Dot product
+    add_test(
+        NAME phase5_qemu_rvv_dot_product
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_dot_product PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Dot product \\(float32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Dot product \\(float32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;functional"
+    )
+
+    # Test 7: SAXPY
+    add_test(
+        NAME phase5_qemu_rvv_saxpy
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_saxpy PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] SAXPY \\(float32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] SAXPY \\(float32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;functional"
+    )
+
+    # Test 8: Matrix multiply
+    add_test(
+        NAME phase5_qemu_rvv_matmul
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_matmul PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Matrix multiply \\(float32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Matrix multiply \\(float32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;functional"
+    )
+
+    # Test 9: All Phase 5 tests pass (integration)
+    add_test(
+        NAME phase5_qemu_rvv_complete
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 5 tests: 7/7 PASS"
+        FAIL_REGULAR_EXPRESSION "FAIL"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;integration"
+    )
+
+    # Test 10: Hello RISC-V (still works in RVV mode)
+    add_test(
+        NAME phase5_qemu_rvv_hello
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -cpu rv64,v=true,vlen=${VLEN}
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_qemu_rvv_hello PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 30
+        LABELS "phase5;qemu;rvv;smoke"
+    )
+
+endif()
+
+# =============================================================================
+# Phase 5: RVV Tests (Spike)
+# =============================================================================
+
+# Phase 5 Spike tests: Single-core with RVV enabled
+if(TARGET app AND SPIKE AND ENABLE_RVV AND NUM_HARTS EQUAL 1)
+
+    # Test 1: RVV Detection on Spike
+    add_test(
+        NAME phase5_spike_rvv_detect
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_detect PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] RVV detection: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] RVV detection: FAIL"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;smoke"
+    )
+
+    # Test 2: RVV VLEN detection on Spike
+    add_test(
+        NAME phase5_spike_rvv_vlen
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_vlen PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RVV\\] VLEN  = [0-9]+ bits"
+        FAIL_REGULAR_EXPRESSION "\\[RVV\\] Not available"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;detect"
+    )
+
+    # Test 3: Integer vector add on Spike
+    add_test(
+        NAME phase5_spike_rvv_vec_add_i32
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_vec_add_i32 PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Vec add \\(int32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Vec add \\(int32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;functional"
+    )
+
+    # Test 4: Vector memcpy on Spike
+    add_test(
+        NAME phase5_spike_rvv_memcpy
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_memcpy PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Vec memcpy: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Vec memcpy: FAIL"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;functional"
+    )
+
+    # Test 5: Dot product on Spike
+    add_test(
+        NAME phase5_spike_rvv_dot_product
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_dot_product PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Dot product \\(float32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Dot product \\(float32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;functional"
+    )
+
+    # Test 6: SAXPY on Spike
+    add_test(
+        NAME phase5_spike_rvv_saxpy
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_saxpy PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] SAXPY \\(float32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] SAXPY \\(float32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;functional"
+    )
+
+    # Test 7: Matrix multiply on Spike
+    add_test(
+        NAME phase5_spike_rvv_matmul
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_matmul PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Matrix multiply \\(float32\\): PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Matrix multiply \\(float32\\): FAIL"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;functional"
+    )
+
+    # Test 8: All Phase 5 tests pass on Spike (integration)
+    add_test(
+        NAME phase5_spike_rvv_complete
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 5 tests: 7/7 PASS"
+        FAIL_REGULAR_EXPRESSION "FAIL"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;integration"
+    )
+
+    # Test 9: Platform name on Spike
+    add_test(
+        NAME phase5_spike_rvv_platform
+        COMMAND ${SPIKE} --isa=rv64gcv $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase5_spike_rvv_platform PROPERTIES
+        PASS_REGULAR_EXPRESSION "Platform: Spike"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 30
+        LABELS "phase5;spike;rvv;smoke"
+    )
+
+endif()
 
 # =============================================================================
 # Phase 6: gem5 Tests
