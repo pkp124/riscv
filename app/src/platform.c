@@ -26,6 +26,27 @@ void platform_init(void)
     /* Platform-specific initialization can go here */
 }
 
+void platform_exit(int exit_code)
+{
+#if defined(PLATFORM_SPIKE)
+    /* Spike: use HTIF to tell the host to shutdown */
+    htif_poweroff(exit_code);
+#elif defined(PLATFORM_QEMU_VIRT)
+    /* QEMU virt: use sifive_test device for clean exit */
+    volatile uint32_t *test_dev = (volatile uint32_t *) VIRT_TEST_BASE;
+    if (exit_code == 0) {
+        *test_dev = VIRT_TEST_FINISHER_PASS;
+    } else {
+        *test_dev = VIRT_TEST_FINISHER_FAIL;
+    }
+#endif
+    /* Fallback: enter low-power infinite loop */
+    (void) exit_code;
+    while (1) {
+        __asm__ __volatile__("wfi");
+    }
+}
+
 const char *platform_get_name(void)
 {
     return PLATFORM_NAME;

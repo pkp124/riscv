@@ -89,7 +89,11 @@ _start:
     /* Call main() - C function */
     call    main
     
-    /* If main returns, loop forever */
+    /* If main returns, do platform-specific exit */
+    /* a0 contains main()'s return value (exit code) */
+    call    platform_exit
+
+    /* Fallback: loop forever (should not reach here) */
 .Lexit:
     wfi                             # Wait for interrupt (low power)
     j       .Lexit                  # Infinite loop

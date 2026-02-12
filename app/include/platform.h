@@ -41,9 +41,17 @@
 #if defined(PLATFORM_QEMU_VIRT) || defined(PLATFORM_GEM5) || defined(PLATFORM_RENODE)
 #define UART_BASE 0x10000000UL /* NS16550A UART */
 #elif defined(PLATFORM_SPIKE)
-/* Spike uses HTIF (Host-Target Interface), not MMIO UART */
-#define HTIF_TOHOST 0x80001000UL
-#define HTIF_FROMHOST 0x80001008UL
+/* Spike uses HTIF (Host-Target Interface), not MMIO UART.
+ * The tohost/fromhost symbols are defined in the linker script (spike.ld)
+ * and referenced directly in htif.c as extern variables.
+ * Spike finds them by name in the ELF symbol table. */
+#endif
+
+/* QEMU virt machine: sifive_test device for clean exit */
+#if defined(PLATFORM_QEMU_VIRT)
+#define VIRT_TEST_BASE 0x100000UL
+#define VIRT_TEST_FINISHER_PASS 0x5555
+#define VIRT_TEST_FINISHER_FAIL 0x3333
 #endif
 
 /* CLINT (Core-Local Interruptor) */
@@ -77,6 +85,16 @@
  * @brief Initialize platform-specific hardware
  */
 void platform_init(void);
+
+/**
+ * @brief Clean shutdown (platform-specific)
+ *
+ * On Spike: sends HTIF poweroff command
+ * On QEMU/gem5/Renode: enters infinite WFI loop
+ *
+ * @param exit_code Exit code (0 = success)
+ */
+void platform_exit(int exit_code);
 
 /**
  * @brief Get platform name string

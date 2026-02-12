@@ -35,12 +35,16 @@ SECTIONS {
     /* Ensure text section is aligned */
     . = ALIGN(16);
 
-    /* Reserve space for HTIF (tohost/fromhost) */
-    . = 0x80001000;
-    .htif : {
-        PROVIDE(__htif_tohost = .);
+    /*
+     * HTIF (Host-Target Interface) section for Spike
+     * Spike requires ELF symbols named exactly "tohost" and "fromhost".
+     * These are used for host-target communication (console I/O, exit).
+     * We align to a 4KB boundary to avoid overlap with the text section.
+     */
+    .tohost ALIGN(0x1000) : {
+        tohost = .;
         . = . + 8;
-        PROVIDE(__htif_fromhost = .);
+        fromhost = .;
         . = . + 8;
     } > RAM
 

@@ -33,33 +33,38 @@
 #define HTIF_CMD(dev, cmd, data)                                                                   \
     (((uint64_t) (dev) << 56) | ((uint64_t) (cmd) << 48) | ((data) & 0xFFFFFFFFFFFFULL))
 
+/*
+ * HTIF tohost/fromhost registers.
+ * These symbols are defined in the Spike linker script (spike.ld).
+ * Spike finds them by name in the ELF symbol table.
+ */
+extern volatile uint64_t tohost;
+extern volatile uint64_t fromhost;
+
 /* =============================================================================
  * HTIF Implementation
  * ============================================================================= */
 
 void htif_init(void)
 {
-    /* No initialization needed for HTIF */
+    /* Ensure HTIF is in a clean state */
+    tohost = 0;
+    fromhost = 0;
 }
 
 void htif_putc(char c)
 {
-    /* For Spike, we use a simple approach: */
-    /* Write character to tohost using console device */
-    volatile uint64_t *tohost = (volatile uint64_t *) HTIF_TOHOST;
-    volatile uint64_t *fromhost = (volatile uint64_t *) HTIF_FROMHOST;
-
     /* Wait for previous command to complete */
-    while (*tohost != 0) {
-        *fromhost = 0;
+    while (tohost != 0) {
+        fromhost = 0;
     }
 
     /* Write character using console device */
-    *tohost = HTIF_CMD(HTIF_DEV_CONSOLE, HTIF_CMD_WRITE, c);
+    tohost = HTIF_CMD(HTIF_DEV_CONSOLE, HTIF_CMD_WRITE, (uint8_t) c);
 
     /* Wait for completion */
-    while (*tohost != 0) {
-        *fromhost = 0;
+    while (tohost != 0) {
+        fromhost = 0;
     }
 }
 
@@ -70,10 +75,6 @@ void htif_puts(const char *s)
     }
 
     while (*s) {
-        /* Convert \n to \r\n for proper line endings */
-        if (*s == '\n') {
-            htif_putc('\r');
-        }
         htif_putc(*s++);
     }
 }
@@ -91,10 +92,8 @@ void htif_write(const char *buf, size_t len)
 
 void htif_poweroff(int exit_code)
 {
-    volatile uint64_t *tohost = (volatile uint64_t *) HTIF_TOHOST;
-
-    /* Exit command: dev=0 (syscall), cmd=exit, data=exit_code */
-    *tohost = HTIF_CMD(0, 0, (exit_code << 1) | 1);
+    /* Exit command: dev=0 (syscall), cmd=0, data=(code << 1) | 1 */
+    tohost = HTIF_CMD(0, 0, (exit_code << 1) | 1);
 
     /* Should not return */
     while (1) {
