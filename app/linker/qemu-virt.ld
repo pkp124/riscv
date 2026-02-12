@@ -97,6 +97,8 @@ SECTIONS {
      * For SMP, we need multiple stacks (allocated per-hart)
      * ========================================================================= */
     .stack : {
+        /* Ensure stack starts at 16-byte boundary for ABI compliance */
+        . = ALIGN(16);
         PROVIDE(__stack_start = .);
         . = . + STACK_SIZE * NUM_HARTS;  /* NUM_HARTS defined by CMake */
         PROVIDE(__stack_end = .);
