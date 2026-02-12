@@ -16,30 +16,33 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 ## Current Project Status
 
 **Completed:** Phase 0-5 (Design, Build System, QEMU, Spike, SMP, RVV)  
-**Next Phase:** Phase 6 (gem5 Integration)  
+**Current Phase:** Phase 6 (gem5 Integration) - IN PROGRESS  
 **Last Updated:** 2026-02-12  
 
 ### What Exists
 ✅ Comprehensive design documents (docs/00-06)  
 ✅ Devcontainer configuration (.devcontainer/)  
 ✅ Full CI pipeline (lint, build matrix, QEMU + Spike simulations, cross-validation)  
-✅ CMake build system with 15+ presets (CMakeLists.txt, CMakePresets.json)  
+✅ CMake build system with 20+ presets (CMakeLists.txt, CMakePresets.json)  
 ✅ RISC-V toolchain file (cmake/toolchain/riscv64-elf.cmake)  
-✅ CTest: 7 QEMU Phase 2 + 7 QEMU Phase 4 + 10 QEMU Phase 5 + 8 Spike Phase 3 + 5 Spike Phase 4 + 9 Spike Phase 5 tests  
-✅ Application source (startup.S, main.c, uart.c, htif.c, platform.c, smp.c)  
-✅ Platform headers (platform.h, csr.h, uart.h, htif.h, console.h, smp.h, atomic.h)  
+✅ CTest: 7 QEMU Phase 2 + 7 QEMU Phase 4 + 10 QEMU Phase 5 + 8 Spike Phase 3 + 5 Spike Phase 4 + 9 Spike Phase 5 + 13 gem5 Phase 6 tests  
+✅ Application source (startup.S, main.c, uart.c, htif.c, gem5_se_io.c, platform.c, smp.c)  
+✅ Platform headers (platform.h, csr.h, uart.h, htif.h, gem5_se_io.h, console.h, smp.h, atomic.h)  
 ✅ RVV infrastructure (rvv/rvv_detect.h, rvv/rvv_common.h)  
 ✅ RVV workloads (vec_add, vec_memcpy, vec_dotprod, vec_saxpy, vec_matmul)  
-✅ Linker scripts (qemu-virt.ld, spike.ld) with SMP stack allocation  
+✅ Linker scripts (qemu-virt.ld, spike.ld, gem5.ld) with SMP stack allocation  
 ✅ Setup scripts (setup-toolchain.sh, setup-simulators.sh, verify-environment.sh)  
 ✅ Cross-platform validation (QEMU vs Spike output functionally identical)  
 ✅ SMP support: spinlocks, barriers, atomic ops, multi-hart boot (2-8 harts)  
 ✅ RVV support: 7 workloads, VLEN-agnostic, inline asm, scalar verification  
+✅ gem5 platform support: SE mode (syscall I/O), FS mode (UART + m5ops exit)  
+✅ gem5 Python configs: fs_config.py (4 CPU models), se_config.py  
+✅ gem5 performance analysis: parse-gem5-stats.py (JSON/CSV/comparison)  
+✅ gem5 CI workflow: ci-gem5.yml (build, simulate, compare stats)  
 
 ### What Doesn't Exist Yet
-❌ gem5 platform support (Phase 6)  
 ❌ Renode platform support (Phase 7)  
-❌ Platform launch configs (platforms/)
+❌ gem5 runtime validation (requires gem5 simulator installation)
 
 ---
 
@@ -544,31 +547,60 @@ set_tests_properties(smp_4hart_boot PROPERTIES
 
 ---
 
-## gem5 Specifics
+## gem5 Specifics (Phase 6 Implementation)
 
 ### gem5 Modes
 
 #### SE (Syscall Emulation) Mode
 - **Simpler**: No full system boot
 - **Faster**: Skips bootloader/firmware
-- **Use case**: User-space application simulation
-- **Syscalls**: Emulated by gem5 (e.g., write() → output)
+- **Use case**: Quick functional testing
+- **I/O**: Via ecall syscalls (write=64, exit=93) implemented in `gem5_se_io.c`
+- **Config**: `platforms/gem5/configs/se_config.py`
+- **Preset**: `gem5-se`
 
 #### FS (Full System) Mode
-- **Realistic**: Full system with devices
-- **Slower**: Complete boot sequence
-- **Use case**: Bare-metal firmware, OS kernels
-- **I/O**: Real MMIO devices
+- **Realistic**: Full system with devices (UART, CLINT)
+- **Slower**: Complete bare-metal boot sequence
+- **Use case**: Bare-metal firmware, cycle-accurate analysis
+- **I/O**: NS16550A UART at 0x10000000 (same driver as QEMU)
+- **Exit**: m5ops pseudo-instruction (`gem5_m5_exit()` in platform.h)
+- **Config**: `platforms/gem5/configs/fs_config.py`
+- **Presets**: `gem5-fs`, `gem5-fs-timing`, `gem5-fs-minor`, `gem5-fs-o3`, `gem5-fs-smp`
 
-**For bare-metal, we primarily use FS mode.**
+**For bare-metal, we primarily use FS mode. SE mode is a simpler alternative.**
 
 ### gem5 CPU Models
-- **AtomicSimpleCPU**: Fastest, no timing, functional only
-- **TimingSimpleCPU**: Simple timing model, no pipeline detail
-- **MinorCPU**: Detailed in-order pipeline (4-stage)
-- **O3CPU**: Out-of-order, superscalar (complex, very slow)
+| Model | Preset | Speed | Use Case |
+|-------|--------|-------|----------|
+| AtomicSimpleCPU | `gem5-fs` | Fast | Quick functional testing |
+| TimingSimpleCPU | `gem5-fs-timing` | Medium | Memory system timing |
+| MinorCPU | `gem5-fs-minor` | Slow | In-order pipeline analysis |
+| DerivO3CPU | `gem5-fs-o3` | Very slow | Out-of-order analysis |
 
 **Start with AtomicSimpleCPU for functional tests, use TimingSimpleCPU/MinorCPU for performance.**
+
+### gem5 m5ops (Pseudo-Instructions)
+For RISC-V, gem5 recognizes custom instruction encodings as m5ops:
+```c
+// In platform.h (available when PLATFORM_GEM5 is defined):
+gem5_m5_exit(delay);        // Exit simulation
+gem5_m5_dump_stats(d, p);   // Dump performance stats
+gem5_m5_reset_stats(d, p);  // Reset stats counters
+```
+
+### gem5 Performance Analysis
+```bash
+# Parse stats after simulation
+python3 scripts/parse-gem5-stats.py m5out/stats.txt
+
+# Compare two CPU models
+python3 scripts/parse-gem5-stats.py --compare \
+  m5out/atomic/stats.txt m5out/timing/stats.txt
+
+# JSON output for automation
+python3 scripts/parse-gem5-stats.py --json m5out/stats.txt
+```
 
 ---
 
