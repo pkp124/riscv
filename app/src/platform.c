@@ -23,6 +23,24 @@ void platform_init(void)
     htif_init();
 #endif
 
+#if defined(ENABLE_RVV)
+    /* Enable the floating-point unit (mstatus.FS = Initial).
+     * Required for FP vector instructions which use fcsr rounding mode. */
+    {
+        unsigned long mstatus_val = read_csr(mstatus);
+        mstatus_val |= (1UL << 13); /* Set FS = Initial (01) at bits [14:13] */
+        write_csr(mstatus, mstatus_val);
+    }
+    /* Enable the vector unit by setting mstatus.VS = Initial (01).
+     * Without this, any vector instruction will trap as illegal. */
+    {
+        unsigned long mstatus_val = read_csr(mstatus);
+        mstatus_val &= ~(3UL << 9); /* Clear VS field [10:9] */
+        mstatus_val |= (1UL << 9);  /* Set VS = Initial (01) */
+        write_csr(mstatus, mstatus_val);
+    }
+#endif
+
     /* Platform-specific initialization can go here */
 }
 
