@@ -326,10 +326,207 @@ if(TARGET app AND SPIKE)
 endif()
 
 # =============================================================================
-# Phase 4: SMP Tests
+# Phase 4: SMP Tests (QEMU)
 # =============================================================================
 
-# To be implemented in Phase 4
+# Phase 4 tests require SMP build (NUM_HARTS > 1)
+if(TARGET app AND QEMU_SYSTEM_RISCV64 AND NUM_HARTS GREATER 1)
+
+    # Test 1: SMP Boot - all harts come online
+    add_test(
+        NAME phase4_qemu_smp_boot
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -smp ${NUM_HARTS}
+            -m 256M
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_qemu_smp_boot PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[SMP\\] All ${NUM_HARTS} harts online"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 60
+        LABELS "phase4;qemu;smp;smoke"
+    )
+
+    # Test 2: Spinlock correctness
+    add_test(
+        NAME phase4_qemu_smp_spinlock
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -smp ${NUM_HARTS}
+            -m 256M
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_qemu_smp_spinlock PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Spinlock: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Spinlock: FAIL"
+        TIMEOUT 60
+        LABELS "phase4;qemu;smp;functional"
+    )
+
+    # Test 3: Atomic operations
+    add_test(
+        NAME phase4_qemu_smp_atomic
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -smp ${NUM_HARTS}
+            -m 256M
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_qemu_smp_atomic PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Atomic operations: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Atomic operations: FAIL"
+        TIMEOUT 60
+        LABELS "phase4;qemu;smp;functional"
+    )
+
+    # Test 4: Barrier synchronization
+    add_test(
+        NAME phase4_qemu_smp_barrier
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -smp ${NUM_HARTS}
+            -m 256M
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_qemu_smp_barrier PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Barrier synchronization: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Barrier synchronization: FAIL"
+        TIMEOUT 60
+        LABELS "phase4;qemu;smp;functional"
+    )
+
+    # Test 5: Hello RISC-V (still works in SMP mode)
+    add_test(
+        NAME phase4_qemu_smp_hello
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -smp ${NUM_HARTS}
+            -m 256M
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_qemu_smp_hello PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 60
+        LABELS "phase4;qemu;smp;smoke"
+    )
+
+    # Test 6: Per-hart stack (each hart announced online)
+    add_test(
+        NAME phase4_qemu_smp_per_hart
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -smp ${NUM_HARTS}
+            -m 256M
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_qemu_smp_per_hart PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[SMP\\] Hart 1 online"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 60
+        LABELS "phase4;qemu;smp;functional"
+    )
+
+    # Test 7: All Phase 4 tests pass (integration)
+    add_test(
+        NAME phase4_qemu_smp_complete
+        COMMAND ${QEMU_SYSTEM_RISCV64}
+            -machine virt
+            -smp ${NUM_HARTS}
+            -m 256M
+            -nographic
+            -bios none
+            -kernel $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_qemu_smp_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 4 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "0/[0-9]+ PASS|FAIL"
+        TIMEOUT 60
+        LABELS "phase4;qemu;smp;integration"
+    )
+
+endif()
+
+# =============================================================================
+# Phase 4: SMP Tests (Spike)
+# =============================================================================
+
+if(TARGET app AND SPIKE AND NUM_HARTS GREATER 1)
+
+    # Test 1: SMP Boot on Spike
+    add_test(
+        NAME phase4_spike_smp_boot
+        COMMAND ${SPIKE} --isa=rv64gc -p${NUM_HARTS} $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_spike_smp_boot PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[SMP\\] All ${NUM_HARTS} harts online"
+        FAIL_REGULAR_EXPRESSION "ERROR|panic"
+        TIMEOUT 60
+        LABELS "phase4;spike;smp;smoke"
+    )
+
+    # Test 2: Spinlock on Spike
+    add_test(
+        NAME phase4_spike_smp_spinlock
+        COMMAND ${SPIKE} --isa=rv64gc -p${NUM_HARTS} $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_spike_smp_spinlock PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Spinlock: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Spinlock: FAIL"
+        TIMEOUT 60
+        LABELS "phase4;spike;smp;functional"
+    )
+
+    # Test 3: Atomic operations on Spike
+    add_test(
+        NAME phase4_spike_smp_atomic
+        COMMAND ${SPIKE} --isa=rv64gc -p${NUM_HARTS} $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_spike_smp_atomic PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Atomic operations: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Atomic operations: FAIL"
+        TIMEOUT 60
+        LABELS "phase4;spike;smp;functional"
+    )
+
+    # Test 4: Barrier on Spike
+    add_test(
+        NAME phase4_spike_smp_barrier
+        COMMAND ${SPIKE} --isa=rv64gc -p${NUM_HARTS} $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_spike_smp_barrier PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] Barrier synchronization: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] Barrier synchronization: FAIL"
+        TIMEOUT 60
+        LABELS "phase4;spike;smp;functional"
+    )
+
+    # Test 5: All Phase 4 tests pass on Spike (integration)
+    add_test(
+        NAME phase4_spike_smp_complete
+        COMMAND ${SPIKE} --isa=rv64gc -p${NUM_HARTS} $<TARGET_FILE:app>
+    )
+    set_tests_properties(phase4_spike_smp_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 4 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "0/[0-9]+ PASS|FAIL"
+        TIMEOUT 60
+        LABELS "phase4;spike;smp;integration"
+    )
+
+endif()
 
 # =============================================================================
 # Phase 5: RVV Tests

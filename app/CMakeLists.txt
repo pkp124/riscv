@@ -9,6 +9,7 @@ add_executable(app
     src/uart.c
     src/htif.c
     src/platform.c
+    src/smp.c
 )
 
 # Set include directories
