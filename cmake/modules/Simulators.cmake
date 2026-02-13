@@ -34,6 +34,7 @@ endif()
 # Find gem5 (check multiple common locations)
 find_program(GEM5_OPT gem5.opt
     PATHS
+        ${CMAKE_SOURCE_DIR}/gem5-build/build/RISCV
         /opt/gem5/build/RISCV
         $ENV{GEM5_HOME}/build/RISCV
         ${CMAKE_SOURCE_DIR}/../gem5/build/RISCV

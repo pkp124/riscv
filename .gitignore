@@ -44,6 +44,9 @@
 build/
 app/build/
 
+# gem5 build (cloned for local simulation)
+gem5-build/
+
 # Simulation output
 m5out/
 output.log
