@@ -377,6 +377,10 @@ spike -d --isa=rv64gc build/spike/bin/app
 
 #### gem5
 ```bash
+# Run both SE and FS modes (builds ELFs, runs simulations)
+./scripts/run-gem5-both-modes.sh
+
+# Or run individually:
 # Syscall Emulation mode
 /opt/gem5/build/RISCV/gem5.opt \
     platforms/gem5/configs/se_config.py \
@@ -387,6 +391,10 @@ spike -d --isa=rv64gc build/spike/bin/app
     platforms/gem5/configs/fs_config.py \
     --cmd=build/gem5-fs/bin/app
 ```
+
+The `run-gem5-both-modes.sh` script automatically finds gem5 in `gem5-build/` (workspace)
+or `/opt/gem5/`. Use `--build-only` to build ELFs without running, or `--se-only`/`--fs-only`
+to run a single mode.
 
 #### Renode
 ```bash
