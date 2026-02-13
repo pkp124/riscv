@@ -123,6 +123,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gem5-elfs
+          overwrite: true
           path: |
             build/gem5-fs/app/app
             build/gem5-fs/bin/app
@@ -166,7 +167,7 @@ jobs:
         run: |
           git clone --depth 1 --branch stable https://github.com/gem5/gem5.git /opt/gem5
           cd /opt/gem5
-          scons build/RISCV/gem5.opt -j$(nproc) --no-lto 2>&1 | tail -20
+          scons build/RISCV/gem5.opt -j$(nproc) 2>&1 | tail -20
           echo "gem5 build complete"
           ls -la build/RISCV/gem5.opt
 
@@ -288,6 +289,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gem5-stats-fs-${{ matrix.cpu_type }}
+          overwrite: true
           path: |
             m5out/
             gem5_output.txt
@@ -364,6 +366,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gem5-stats-se
+          overwrite: true
           path: |
             m5out/
             gem5_se_output.txt

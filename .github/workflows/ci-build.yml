@@ -85,54 +85,64 @@ jobs:
             config: single
             rvv: "0"
             num_harts: "1"
+            artifact_id: "qemu-single-rvv0"
           - name: "QEMU SMP (4 harts)"
             platform: qemu
             config: smp
             rvv: "0"
             num_harts: "4"
+            artifact_id: "qemu-smp-rvv0"
           - name: "QEMU RVV"
             platform: qemu
             config: single
             rvv: "1"
             num_harts: "1"
+            artifact_id: "qemu-single-rvv1"
           - name: "QEMU SMP+RVV (4 harts)"
             platform: qemu
             config: smp
             rvv: "1"
             num_harts: "4"
+            artifact_id: "qemu-smp-rvv1"
           - name: "Spike Single-Core"
             platform: spike
             config: single
             rvv: "0"
             num_harts: "1"
+            artifact_id: "spike-single-rvv0"
           - name: "Spike SMP (4 harts)"
             platform: spike
             config: smp
             rvv: "0"
             num_harts: "4"
+            artifact_id: "spike-smp-rvv0"
           - name: "Spike RVV"
             platform: spike
             config: single
             rvv: "1"
             num_harts: "1"
+            artifact_id: "spike-single-rvv1"
           - name: "gem5 FS (Single-Core)"
             platform: gem5
             config: single
             rvv: "0"
             num_harts: "1"
             gem5_mode: "fs"
+            artifact_id: "gem5-fs-single-rvv0"
           - name: "gem5 SE (Single-Core)"
             platform: gem5
             config: single
             rvv: "0"
             num_harts: "1"
             gem5_mode: "se"
+            artifact_id: "gem5-se-single-rvv0"
           - name: "gem5 FS SMP (4 harts)"
             platform: gem5
             config: smp
             rvv: "0"
             num_harts: "4"
             gem5_mode: "fs"
+            artifact_id: "gem5-fs-smp-rvv0"
 
     steps:
       - name: Checkout
@@ -201,7 +211,8 @@ jobs:
       - name: Upload ELF artifact
         uses: actions/upload-artifact@v4
         with:
-          name: elf-${{ matrix.platform }}-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          name: elf-${{ matrix.artifact_id }}
+          overwrite: true
           path: |
             ${{ env.BUILD_DIR }}/bin/app
             ${{ env.BUILD_DIR }}/app/app.elf
@@ -425,6 +436,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sim-log-qemu-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          overwrite: true
           path: output.log
           retention-days: 30
 
@@ -645,6 +657,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sim-log-spike-${{ matrix.config }}-rvv${{ matrix.rvv }}
+          overwrite: true
           path: output.log
           retention-days: 30
           if-no-files-found: warn
