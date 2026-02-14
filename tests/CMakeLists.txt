@@ -1036,7 +1036,49 @@ endif()
 # Phase 7: Renode Tests
 # =============================================================================
 
-# To be implemented in Phase 7
+# Phase 7 Renode tests: Only for single-core renode builds without RVV
+if(TARGET app AND RENODE AND PLATFORM STREQUAL "renode" AND NUM_HARTS EQUAL 1 AND NOT ENABLE_RVV)
+
+    # Test 1: Boot and print "Hello RISC-V"
+    add_test(
+        NAME phase7_renode_boot_hello
+        COMMAND ${RENODE} -e "set elf \"$<TARGET_FILE:app>\"; s @platforms/renode/configs/run.resc"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set_tests_properties(phase7_renode_boot_hello PROPERTIES
+        PASS_REGULAR_EXPRESSION "Hello RISC-V"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL|panic"
+        TIMEOUT 30
+        LABELS "phase7;renode;smoke"
+    )
+
+    # Test 2: Platform name reports "Renode"
+    add_test(
+        NAME phase7_renode_platform_name
+        COMMAND ${RENODE} -e "set elf \"$<TARGET_FILE:app>\"; s @platforms/renode/configs/run.resc"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set_tests_properties(phase7_renode_platform_name PROPERTIES
+        PASS_REGULAR_EXPRESSION "Platform: Renode"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 30
+        LABELS "phase7;renode;smoke"
+    )
+
+    # Test 3: All Phase 2 tests pass (integration)
+    add_test(
+        NAME phase7_renode_complete
+        COMMAND ${RENODE} -e "set elf \"$<TARGET_FILE:app>\"; s @platforms/renode/configs/run.resc"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set_tests_properties(phase7_renode_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\].*5/5.*PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL"
+        TIMEOUT 60
+        LABELS "phase7;renode;functional"
+    )
+
+endif()
 
 # =============================================================================
 # Test Groups
