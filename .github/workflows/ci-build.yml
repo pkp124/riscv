@@ -38,6 +38,26 @@ concurrency:
 
 jobs:
   # ============================================================
+  # Job 0: Detect changed paths (for conditional devcontainer build)
+  # ============================================================
+  changes:
+    name: "Detect changes"
+    runs-on: ubuntu-24.04
+    outputs:
+      devcontainer: ${{ steps.filter.outputs.devcontainer }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            devcontainer:
+              - '.devcontainer/**'
+
+  # ============================================================
   # Job 1: Lint and Static Analysis
   # ============================================================
   lint:
@@ -449,12 +469,15 @@ jobs:
           retention-days: 30
 
   # ============================================================
-  # Job 3b: Build Devcontainer (single build for all downstream jobs)
+  # Job 3b: Build Devcontainer (only when .devcontainer changes)
   # ============================================================
   build-devcontainer:
     name: "Build: Devcontainer"
     runs-on: ubuntu-24.04
-    needs: lint
+    needs: [lint, changes]
+    if: |
+      needs.changes.outputs.devcontainer == 'true' ||
+      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout
@@ -488,7 +511,7 @@ jobs:
   simulate-spike:
     name: "Simulate Spike: ${{ matrix.name }}"
     runs-on: ubuntu-24.04
-    needs: [build, build-devcontainer]
+    needs: [build]
     strategy:
       fail-fast: false
       matrix:
@@ -754,7 +777,7 @@ jobs:
     name: "Simulate: gem5 FS (${{ matrix.cpu_type }})"
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [build, build-devcontainer]
+    needs: [build]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
@@ -838,7 +861,7 @@ jobs:
     name: "Simulate: gem5 SE"
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: [build, build-devcontainer]
+    needs: [build]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
