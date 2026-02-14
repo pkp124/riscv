@@ -1,14 +1,8 @@
 # =============================================================================
 # RISC-V Bare-Metal Development Environment
 # =============================================================================
-# This Dockerfile creates a comprehensive development environment for
-# RISC-V bare-metal development, including:
-# - RISC-V GCC cross-compiler toolchain (with RVV support)
-# - QEMU system emulator (RISC-V)
-# - Spike ISA simulator
-# - gem5 (RISC-V simulator, ~30-60 min build)
-# - Static analysis tools
-# - GDB for debugging
+# Toolchain, QEMU, Spike, gem5. Renode simulations use antmicro/renode image
+# in CI only (docker run antmicro/renode).
 # =============================================================================
 
 FROM ubuntu:24.04

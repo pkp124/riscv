@@ -171,6 +171,12 @@ jobs:
             num_harts: "4"
             gem5_mode: "fs"
             artifact_id: "gem5-fs-smp-rvv0"
+          - name: "Renode Single-Core"
+            platform: renode
+            config: single
+            rvv: "0"
+            num_harts: "1"
+            artifact_id: "renode-single-rvv0"
 
     steps:
       - name: Checkout
@@ -213,6 +219,8 @@ jobs:
             else
               PRESET="default"
             fi
+          elif [ "${{ matrix.platform }}" = "renode" ]; then
+            PRESET="renode"
           fi
           echo "Using preset: $PRESET"
           echo "PRESET=$PRESET" >> $GITHUB_ENV
@@ -701,6 +709,124 @@ jobs:
           name: sim-log-spike-${{ matrix.config }}-rvv${{ matrix.rvv }}
           overwrite: true
           path: output.log
+          retention-days: 30
+          if-no-files-found: warn
+
+  # ============================================================
+  # Job 4b: Simulation Tests (Renode)
+  # ============================================================
+  simulate-renode:
+    name: "Simulate Renode: Single-Core"
+    runs-on: ubuntu-24.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Single-Core"
+            platform: renode
+            config: single
+            rvv: "0"
+            num_harts: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Renode ELF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: elf-renode-single-rvv0
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Run Renode Simulation
+        timeout-minutes: 2
+        run: |
+          # Find ELF binary
+          ELF=$(find artifacts/ -type f \( -name 'app' -o -name 'app.elf' \) 2>/dev/null | head -1)
+          if [ -z "$ELF" ] || [ ! -f "$ELF" ]; then
+            echo "No ELF artifact found. Simulation skipped."
+            ls -R artifacts/ || echo "No artifacts directory"
+            exit 0
+          fi
+
+          echo "Running Renode simulation (antmicro/renode Docker image)..."
+          echo "ELF: ${ELF}"
+          file "$ELF"
+
+          # Use antmicro/renode image - mount workspace so platform paths resolve
+          # Path inside container: /workspace/artifacts/...
+          ELF_IN_CONTAINER="/workspace/${ELF#${{ github.workspace }}/}"
+          cd ${{ github.workspace }}
+          docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace \
+            antmicro/renode:latest \
+            renode -e "set elf \"${ELF_IN_CONTAINER}\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
+          echo "=== Simulation Output ==="
+          cat output.log || echo "No output generated"
+          echo "=== UART Output (from uart_output.txt) ==="
+          cat uart_output.txt 2>/dev/null || echo "No UART output file"
+
+      - name: Validate Output
+        run: |
+          # Validate UART output (captured to file by Renode)
+          LOG="uart_output.txt"
+          if [ ! -f "$LOG" ]; then
+            LOG="output.log"
+          fi
+          if [ ! -f "$LOG" ]; then
+            echo "No output to validate."
+            exit 0
+          fi
+
+          PASS=true
+
+          if grep -q "Hello RISC-V" "$LOG"; then
+            echo "PASS: Found 'Hello RISC-V'"
+          else
+            echo "FAIL: Missing 'Hello RISC-V'"
+            PASS=false
+          fi
+
+          if grep -q "Platform: Renode" "$LOG"; then
+            echo "PASS: Platform correctly identified as Renode"
+          else
+            echo "FAIL: Platform not identified as Renode"
+            PASS=false
+          fi
+
+          if grep -q "\[RESULT\].*PASS" "$LOG"; then
+            echo "PASS: Test results show PASS"
+          else
+            echo "FAIL: Test results missing or show failure"
+            PASS=false
+          fi
+
+          if grep -q "Phase 2 complete" "$LOG"; then
+            echo "PASS: Phase 2 application completed successfully"
+          else
+            echo "FAIL: Phase 2 application did not complete"
+            PASS=false
+          fi
+
+          if [ "$PASS" = "true" ]; then
+            echo ""
+            echo "=== ALL RENODE VALIDATION CHECKS PASSED ==="
+          else
+            echo ""
+            echo "=== SOME RENODE VALIDATION CHECKS FAILED ==="
+            exit 1
+          fi
+
+      - name: Upload simulation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-log-renode-single-rvv0
+          overwrite: true
+          path: |
+            output.log
+            uart_output.txt
           retention-days: 30
           if-no-files-found: warn
 

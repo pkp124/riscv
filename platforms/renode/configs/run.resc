@@ -1,0 +1,22 @@
+# Renode launch script for RISC-V bare-metal application
+# ======================================================
+# Usage: renode -e "set elf @path/to/app.elf; s @platforms/renode/configs/run.resc"
+# Or from build/renode: renode -e "set elf @${CMAKE_CURRENT_BINARY_DIR}/bin/app; s @${CMAKE_SOURCE_DIR}/platforms/renode/configs/run.resc"
+#
+# The 'elf' variable must be set before sourcing this script (by the run target).
+
+# Create machine and load platform
+mach create
+machine LoadPlatformDescription @platforms/renode/riscv_virt.repl
+
+# Load ELF (path passed via 'elf' variable from run target)
+sysbus LoadELF $elf
+
+# Capture UART to file (headless/CI: UART does not go to stdout by default)
+# Peripheral is on sysbus - use sysbus.uart0
+sysbus.uart0 CreateFileBackend "/workspace/uart_output.txt" false
+
+# Run simulation for 5 seconds to capture UART output
+start
+emulation runFor "00:00:05"
+quit
