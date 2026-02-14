@@ -102,8 +102,8 @@ if "Atomic" in args.cpu_type:
 else:
     system.mem_mode = "timing"
 
-# Memory range
-system.mem_ranges = [AddrRange(args.mem_size)]
+# Memory range: bare-metal binary expects 0x80000000 (RISC-V standard)
+system.mem_ranges = [AddrRange(start=0x80000000, size=args.mem_size)]
 
 # =============================================================================
 # CPU Configuration
@@ -115,6 +115,7 @@ system.cpu = [cpu_class() for _ in range(args.num_cpus)]
 for i, cpu in enumerate(system.cpu):
     cpu.cpu_id = i
     cpu.createInterruptController()
+    cpu.createThreads()
 
 # =============================================================================
 # Memory Hierarchy
@@ -184,21 +185,20 @@ system.mem_ctrl.port = system.membus.mem_side_ports
 system.system_port = system.membus.cpu_side_ports
 
 # =============================================================================
-# Workload (SE mode)
+# Workload (Bare-Metal in M-mode)
+# =============================================================================
+# Use RiscvBareMetal so the CPU starts in M-mode. Process/SEWorkload runs in
+# user mode where mhartid is not accessible ("Illegal instruction" on csrr).
+# RiscvBareMetal loads the binary and resets threads for bare-metal execution.
+#
+# Note: RiscvBareMetal does not implement Linux syscall emulation. Our app
+# uses ecall for write/exit. Semihosting uses ebreak (different ABI). For full
+# gem5 SE support, the app would need to use semihosting or gem5 would need
+# a workload that combines M-mode + Linux syscall emulation.
 # =============================================================================
 
-# Create SE workload
-process = Process()
-process.cmd = [args.cmd]
-if args.options:
-    process.cmd += args.options.split()
-
-# Assign process to each CPU
-for cpu in system.cpu:
-    cpu.workload = process
-    cpu.createThreads()
-
-system.workload = SEWorkload.init_compatible(args.cmd)
+system.workload = RiscvBareMetal()
+system.workload.bootloader = args.cmd
 
 # =============================================================================
 # Root and Instantiation

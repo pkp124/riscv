@@ -858,16 +858,18 @@ jobs:
         continue-on-error: true
 
   # ============================================================
-  # Job 7: gem5 SE Simulation
+  # Job 7: gem5 SE Simulation (DISABLED - bare-metal incompatible)
   # ============================================================
+  # gem5 SE runs Process in user mode; mhartid requires M-mode.
+  # RiscvBareMetal gives M-mode but doesn't emulate Linux syscalls.
+  # Our app uses ecall for write/exit. Disabled until gem5 supports
+  # bare-metal + syscall emulation or we add semihosting to the app.
   simulate-gem5-se:
     name: "Simulate: gem5 SE"
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [build]
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+    if: false
 
     steps:
       - name: Checkout
