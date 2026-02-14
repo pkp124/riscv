@@ -6,7 +6,7 @@
 # - RISC-V GCC cross-compiler toolchain (with RVV support)
 # - QEMU system emulator (RISC-V)
 # - Spike ISA simulator
-# - gem5 (optional, long build)
+# - gem5 (RISC-V simulator, ~30-60 min build)
 # - Static analysis tools
 # - GDB for debugging
 # =============================================================================
@@ -49,6 +49,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     device-tree-compiler \
     libboost-regex-dev \
     libboost-system-dev \
+    # gem5 build dependencies
+    m4 \
+    scons \
+    libprotobuf-dev \
+    protobuf-compiler \
+    libprotoc-dev \
+    libgoogle-perftools-dev \
+    libboost-all-dev \
+    libhdf5-dev \
     # General utilities
     git \
     curl \
@@ -91,20 +100,32 @@ RUN git clone https://github.com/riscv-software-src/riscv-isa-sim.git /tmp/spike
     rm -rf /tmp/spike
 
 # =============================================================================
-# Stage 3: Verify installations
+# Stage 3: Build gem5 (RISC-V simulator)
+# =============================================================================
+# gem5 is used for micro-architectural analysis. Build takes ~30-60 min.
+ARG GEM5_BRANCH=stable
+
+RUN git clone --depth 1 --branch ${GEM5_BRANCH} https://github.com/gem5/gem5.git /opt/gem5 && \
+    cd /opt/gem5 && \
+    scons build/RISCV/gem5.opt -j$(nproc) && \
+    echo "gem5 build complete"
+
+# =============================================================================
+# Stage 4: Verify installations
 # =============================================================================
 RUN echo "=== Toolchain Versions ===" && \
     riscv64-unknown-elf-gcc --version | head -1 && \
     riscv64-unknown-elf-objdump --version | head -1 && \
     qemu-system-riscv64 --version | head -1 && \
     spike --help 2>&1 | head -1 || true && \
+    /opt/gem5/build/RISCV/gem5.opt --version 2>&1 | head -1 || true && \
     gdb-multiarch --version | head -1 && \
     cppcheck --version && \
     clang-format --version && \
     echo "=== All tools verified ==="
 
 # =============================================================================
-# Stage 4: Environment setup
+# Stage 5: Environment setup
 # =============================================================================
 
 # Set PATH to include RISC-V tools
