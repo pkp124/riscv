@@ -70,10 +70,12 @@ _start:
     la      sp, __stack_top         # Single-core: sp = top of stack (grows down)
 #endif
 
-    /* Step 3: Disable interrupts and set trap handler */
+#if !(defined(PLATFORM_GEM5) && defined(GEM5_MODE_SE))
+    /* Step 3: Disable interrupts and set trap handler (M-mode only) */
     csrci   mstatus, 0x8            # Clear MIE bit (bit 3)
     la      t0, _trap_handler       # Load address of trap handler
     csrw    mtvec, t0               # Set mtvec = trap handler address
+#endif
 
     /* Step 4: Call platform_init() - C function */
     call    platform_init
