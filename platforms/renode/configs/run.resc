@@ -13,7 +13,8 @@ machine LoadPlatformDescription @platforms/renode/riscv_virt.repl
 sysbus LoadELF $elf
 
 # Capture UART to file (headless/CI: UART does not go to stdout by default)
-uart0 CreateFileBackend "/workspace/uart_output.txt" false
+# Peripheral is on sysbus - use sysbus.uart0
+sysbus.uart0 CreateFileBackend "/workspace/uart_output.txt" false
 
 # Run simulation for 5 seconds to capture UART output
 start
