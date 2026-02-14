@@ -742,15 +742,18 @@ jobs:
 
       - name: Install Renode
         run: |
-          # Try apt first, then fall back to .deb from GitHub releases
-          if sudo apt-get update && sudo apt-get install -y renode 2>/dev/null; then
-            echo "Renode installed via apt"
-          else
-            echo "Installing Renode from GitHub releases..."
-            RENODE_VERSION="1.14.0"
-            wget -q "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb" -O renode.deb
-            sudo dpkg -i renode.deb || sudo apt-get install -f -y
-          fi
+          # Renode requires Mono 5.20+. Install Mono first, then Renode .deb
+          echo "Installing Mono (required by Renode)..."
+          sudo apt-get update
+          sudo apt-get install -y mono-complete
+          mono --version | head -1
+
+          # Install Renode from .deb (apt package often unavailable on Ubuntu 24.04)
+          RENODE_VERSION="1.14.0"
+          echo "Installing Renode v${RENODE_VERSION} from GitHub releases..."
+          wget "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb" -O renode.deb
+          sudo dpkg -i renode.deb || sudo apt-get install -f -y
+          which renode
           renode --version | head -1
 
       - name: Run Renode Simulation
