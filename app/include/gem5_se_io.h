@@ -2,9 +2,8 @@
  * @file gem5_se_io.h
  * @brief gem5 Syscall Emulation (SE) mode I/O interface
  *
- * In gem5 SE mode with RiscvBareMetal + RiscvSemihosting, I/O uses
- * RISC-V semihosting (ARM ABI): SYS_WRITE0 for output, SYS_EXIT for
- * shutdown. The app emits the ebreak trap sequence; gem5 handles it.
+ * In gem5 SE mode (Process + SEWorkload), I/O uses Linux syscalls via ecall:
+ * write(64) for output, exit_group(94) for shutdown. gem5 emulates them.
  *
  * This module is only active when GEM5_MODE_SE is defined.
  */

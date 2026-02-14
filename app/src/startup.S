@@ -30,7 +30,12 @@ _start:
     /* =========================================================================
      * Read Hart ID
      * ========================================================================= */
+#if defined(PLATFORM_GEM5) && defined(GEM5_MODE_SE)
+    /* gem5 SE runs in user mode; mhartid not accessible. Use 0 (single-threaded). */
+    li      a0, 0
+#else
     csrr    a0, mhartid             # Read hart ID into a0
+#endif
 
 #if NUM_HARTS > 1
     /* In SMP mode, only hart 0 does initialization */
