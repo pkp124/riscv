@@ -28,8 +28,8 @@
  * RISC-V Semihosting Operation Numbers (ARM ABI)
  * ============================================================================= */
 
-#define SYS_WRITE0 0x04   /* Write null-terminated string to debug channel */
-#define SYS_EXIT   0x18   /* Application exit */
+#define SYS_WRITE0 0x04 /* Write null-terminated string to debug channel */
+#define SYS_EXIT 0x18   /* Application exit */
 
 /* ADP_Stopped_ApplicationExit - report normal application exit */
 #define SEMI_EXIT_TYPE 0x20026ULL
@@ -58,14 +58,12 @@ static inline void semi_call(uint32_t op, uint64_t arg)
     register uint32_t a0_val __asm__("a0") = op;
     register uint64_t a1_val __asm__("a1") = arg;
 
-    __asm__ __volatile__(
-        ".word 0x01f01013\n" /* slli x0, x0, 0x1f (prefix) */
-        ".word 0x00100073\n" /* ebreak */
-        ".word 0x40705013\n" /* srai x0, x0, 7 (suffix) */
-        : "+r"(a0_val), "+r"(a1_val)
-        :
-        : "memory"
-    );
+    __asm__ __volatile__(".word 0x01f01013\n" /* slli x0, x0, 0x1f (prefix) */
+                         ".word 0x00100073\n" /* ebreak */
+                         ".word 0x40705013\n" /* srai x0, x0, 7 (suffix) */
+                         : "+r"(a0_val), "+r"(a1_val)
+                         :
+                         : "memory");
 }
 
 /* =============================================================================
@@ -81,20 +79,20 @@ void gem5_se_putc(char c)
 {
     /* SYS_WRITE0 expects pointer to null-terminated string */
     char buf[2] = {c, '\0'};
-    semi_call(SYS_WRITE0, (uint64_t)(uintptr_t)buf);
+    semi_call(SYS_WRITE0, (uint64_t) (uintptr_t) buf);
 }
 
 void gem5_se_puts(const char *s)
 {
-    if (s == (void *)0) {
+    if (s == (void *) 0) {
         return;
     }
-    semi_call(SYS_WRITE0, (uint64_t)(uintptr_t)s);
+    semi_call(SYS_WRITE0, (uint64_t) (uintptr_t) s);
 }
 
 void gem5_se_write(const char *buf, size_t len)
 {
-    if (buf == (void *)0 || len == 0) {
+    if (buf == (void *) 0 || len == 0) {
         return;
     }
     /* SYS_WRITE0 writes until null; use SYS_WRITEC in a loop for binary data,
@@ -107,8 +105,8 @@ void gem5_se_write(const char *buf, size_t len)
 void gem5_se_exit(int exit_code)
 {
     semi_exit_block.type = SEMI_EXIT_TYPE;
-    semi_exit_block.subcode = (uint64_t)(unsigned int)exit_code;
-    semi_call(SYS_EXIT, (uint64_t)(uintptr_t)&semi_exit_block);
+    semi_exit_block.subcode = (uint64_t) (unsigned int) exit_code;
+    semi_call(SYS_EXIT, (uint64_t) (uintptr_t) &semi_exit_block);
 
     /* Should not reach here; loop if semihosting did not exit */
     while (1) {
