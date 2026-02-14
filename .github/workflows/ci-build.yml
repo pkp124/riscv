@@ -481,41 +481,18 @@ jobs:
           path: artifacts/
         continue-on-error: true
 
-      - name: Install Spike runtime dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y device-tree-compiler libboost-regex-dev libboost-system-dev
-
-      - name: Cache Spike build
-        uses: actions/cache@v4
-        id: cache-spike
+      - name: Build devcontainer (includes Spike)
+        uses: docker/build-push-action@v6
+        timeout-minutes: 25
         with:
-          path: |
-            /usr/local/bin/spike
-            /usr/local/lib/libriscv*
-            /usr/local/lib/libfesvr*
-            /usr/local/lib/libdisasm*
-            /usr/local/lib/libsoftfloat*
-            /usr/local/lib/libfdt*
-          key: spike-${{ runner.os }}-v2
+          context: .devcontainer
+          load: true
+          tags: riscv-dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build and install Spike
-        if: steps.cache-spike.outputs.cache-hit != 'true'
-        timeout-minutes: 15
-        run: |
-          git clone --depth 1 https://github.com/riscv-software-src/riscv-isa-sim.git /tmp/spike-src
-          cd /tmp/spike-src
-          mkdir build && cd build
-          ../configure --prefix=/usr/local
-          make -j$(nproc)
-          sudo make install
-          sudo ldconfig
-          spike --help 2>&1 | head -1
-
-      - name: Verify Spike
-        run: |
-          sudo ldconfig
-          spike --help 2>&1 | head -1 || echo "Spike not available"
+      - name: Verify Spike in container
+        run: docker run --rm riscv-dev spike --help 2>&1 | head -5 || true
 
       - name: Run Spike Simulation
         timeout-minutes: 2
@@ -533,12 +510,14 @@ jobs:
             exit 0
           fi
 
-          echo "Running Spike simulation..."
+          echo "Running Spike simulation (in devcontainer)..."
           echo "ELF: ${ELF}"
           file "$ELF"
 
-          sudo ldconfig
-          timeout 60 spike ${{ matrix.spike_args }} "${ELF}" > output.log 2>&1 || true
+          # Path inside container: /artifacts/<path-within-artifacts>
+          ELF_IN_CONTAINER="/artifacts/${ELF#artifacts/}"
+          docker run --rm -v "${{ github.workspace }}/artifacts:/artifacts" \
+            riscv-dev timeout 60 spike ${{ matrix.spike_args }} "${ELF_IN_CONTAINER}" > output.log 2>&1 || true
           SPIKE_EXIT=$?
           echo "=== Simulation Output ==="
           cat output.log || echo "No output generated"
