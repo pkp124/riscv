@@ -469,15 +469,14 @@ jobs:
           retention-days: 30
 
   # ============================================================
-  # Job 3b: Build Devcontainer (only when .devcontainer changes)
+  # Job 3b: Build Devcontainer (required for Spike and gem5 simulations)
   # ============================================================
+  # Must run whenever simulate-spike or simulate-gem5 run, since they need
+  # the devcontainer (Spike, gem5). Run on every workflow to keep cache warm.
   build-devcontainer:
     name: "Build: Devcontainer"
     runs-on: ubuntu-24.04
     needs: [lint, changes]
-    if: |
-      needs.changes.outputs.devcontainer == 'true' ||
-      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout
@@ -511,7 +510,7 @@ jobs:
   simulate-spike:
     name: "Simulate Spike: ${{ matrix.name }}"
     runs-on: ubuntu-24.04
-    needs: [build]
+    needs: [build, build-devcontainer]
     strategy:
       fail-fast: false
       matrix:
@@ -777,7 +776,7 @@ jobs:
     name: "Simulate: gem5 FS (${{ matrix.cpu_type }})"
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [build]
+    needs: [build, build-devcontainer]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
@@ -861,7 +860,7 @@ jobs:
     name: "Simulate: gem5 SE"
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: [build]
+    needs: [build, build-devcontainer]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
