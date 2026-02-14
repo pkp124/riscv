@@ -187,21 +187,17 @@ system.system_port = system.membus.cpu_side_ports
 # =============================================================================
 # Workload (Bare-Metal in M-mode + Semihosting)
 # =============================================================================
-# In SE mode, each CPU requires workload (Process) for each thread; the CPU
-# constructor checks workload.size() == numThreads. RiscvBareMetal loads the
-# binary and sets up M-mode; we assign a Process per CPU to satisfy the check.
-# RiscvSemihosting handles the ebreak trap sequence for SYS_WRITE0/SYS_EXIT.
+# RiscvBareMetal loads the binary and sets up M-mode; RiscvSemihosting handles
+# the ebreak trap sequence for SYS_WRITE0/SYS_EXIT.
+#
+# NOTE: gem5 SE mode has a structural incompatibility: BaseCPU requires
+# cpu.workload.size() == numThreads (Process objects), but Process requires
+# system.workload to be SEWorkload. RiscvBareMetal is Workload, not SEWorkload.
+# Using Process+SEWorkload runs in user mode (mhartid inaccessible). This config
+# uses RiscvBareMetal alone; it will fail the CPU workload check. Disable the
+# gem5 SE CI job until gem5 supports bare-metal SE (e.g. workload check bypass).
 # =============================================================================
 
-# Process per CPU (satisfies cpu.workload.size() == numThreads)
-process = Process()
-process.cmd = [args.cmd]
-if args.options:
-    process.cmd += args.options.split()
-for cpu in system.cpu:
-    cpu.workload = process
-
-# System workload: loads binary, M-mode, semihosting
 system.workload = RiscvBareMetal()
 system.workload.bootloader = args.cmd
 system.workload.semihosting = RiscvSemihosting()

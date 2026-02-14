@@ -859,19 +859,17 @@ jobs:
         continue-on-error: true
 
   # ============================================================
-  # Job 7: gem5 SE Simulation (RiscvBareMetal + RiscvSemihosting)
+  # Job 7: gem5 SE Simulation (DISABLED - gem5 SE/bare-metal incompatible)
   # ============================================================
-  # Uses semihosting (SYS_WRITE0/SYS_EXIT) for I/O. App emits ebreak
-  # trap sequence; gem5 RiscvSemihosting handles it.
+  # BaseCPU requires cpu.workload (Process); Process requires SEWorkload.
+  # RiscvBareMetal is Workload, not SEWorkload. Process+SEWorkload = user mode,
+  # so mhartid fails. RiscvBareMetal alone fails CPU workload check.
   simulate-gem5-se:
     name: "Simulate: gem5 SE"
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [build]
-    if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+    if: false
 
     steps:
       - name: Checkout
