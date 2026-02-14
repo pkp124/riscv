@@ -2,8 +2,16 @@
  * @file gem5_se_io.c
  * @brief gem5 Syscall Emulation (SE) mode I/O implementation
  *
- * Uses RISC-V Linux syscalls via ecall for console output and exit.
- * gem5 SE mode intercepts ecall instructions and emulates them.
+ * Uses RISC-V semihosting (ARM ABI) for console output and exit.
+ * RiscvBareMetal + RiscvSemihosting in gem5 SE mode handles the ebreak
+ * trap sequence and emulates SYS_WRITE0 / SYS_EXIT.
+ *
+ * Semihosting trap sequence (riscv-semihosting spec):
+ *   slli x0, x0, 0x1f  ; 0x01f01013 (prefix)
+ *   ebreak             ; 0x00100073
+ *   srai x0, x0, 7     ; 0x40705013 (suffix)
+ *
+ * Registers: a0 = operation, a1 = parameter
  *
  * This is only compiled when PLATFORM_GEM5 and GEM5_MODE_SE are defined.
  */
@@ -17,46 +25,47 @@
 #if defined(PLATFORM_GEM5) && defined(GEM5_MODE_SE)
 
 /* =============================================================================
- * RISC-V Linux Syscall Numbers
+ * RISC-V Semihosting Operation Numbers (ARM ABI)
  * ============================================================================= */
 
-#define SYS_write 64
-#define SYS_exit 93
-#define SYS_exit_group 94
+#define SYS_WRITE0 0x04   /* Write null-terminated string to debug channel */
+#define SYS_EXIT   0x18   /* Application exit */
 
-/* File descriptors */
-#define STDOUT_FD 1
+/* ADP_Stopped_ApplicationExit - report normal application exit */
+#define SEMI_EXIT_TYPE 0x20026ULL
 
 /* =============================================================================
- * Syscall Interface
+ * Semihosting Parameter Block for SYS_EXIT
+ * ============================================================================= */
+
+static struct {
+    uint64_t type;
+    uint64_t subcode;
+} semi_exit_block;
+
+/* =============================================================================
+ * Semihosting Trap Interface
  * ============================================================================= */
 
 /**
- * @brief Execute a RISC-V syscall with 3 arguments
+ * @brief Perform a RISC-V semihosting call
  *
- * Convention: a7 = syscall number, a0-a2 = arguments, a0 = return value
+ * a0 = operation number, a1 = parameter (pointer or value)
+ * Emits the 3-instruction trap sequence that gem5 recognizes.
  */
-static inline long syscall3(long number, long arg0, long arg1, long arg2)
+static inline void semi_call(uint32_t op, uint64_t arg)
 {
-    register long a7 __asm__("a7") = number;
-    register long a0 __asm__("a0") = arg0;
-    register long a1 __asm__("a1") = arg1;
-    register long a2 __asm__("a2") = arg2;
+    register uint32_t a0_val __asm__("a0") = op;
+    register uint64_t a1_val __asm__("a1") = arg;
 
-    __asm__ __volatile__("ecall" : "+r"(a0) : "r"(a7), "r"(a1), "r"(a2) : "memory");
-    return a0;
-}
-
-/**
- * @brief Execute a RISC-V syscall with 1 argument
- */
-static inline long syscall1(long number, long arg0)
-{
-    register long a7 __asm__("a7") = number;
-    register long a0 __asm__("a0") = arg0;
-
-    __asm__ __volatile__("ecall" : "+r"(a0) : "r"(a7) : "memory");
-    return a0;
+    __asm__ __volatile__(
+        ".word 0x01f01013\n" /* slli x0, x0, 0x1f (prefix) */
+        ".word 0x00100073\n" /* ebreak */
+        ".word 0x40705013\n" /* srai x0, x0, 7 (suffix) */
+        : "+r"(a0_val), "+r"(a1_val)
+        :
+        : "memory"
+    );
 }
 
 /* =============================================================================
@@ -65,46 +74,43 @@ static inline long syscall1(long number, long arg0)
 
 void gem5_se_init(void)
 {
-    /* No initialization needed for SE mode */
+    /* No initialization needed for semihosting */
 }
 
 void gem5_se_putc(char c)
 {
-    syscall3(SYS_write, STDOUT_FD, (long) &c, 1);
+    /* SYS_WRITE0 expects pointer to null-terminated string */
+    char buf[2] = {c, '\0'};
+    semi_call(SYS_WRITE0, (uint64_t)(uintptr_t)buf);
 }
 
 void gem5_se_puts(const char *s)
 {
-    if (s == (void *) 0) {
+    if (s == (void *)0) {
         return;
     }
-
-    /* Calculate string length */
-    size_t len = 0;
-    const char *p = s;
-    while (*p++) {
-        len++;
-    }
-
-    if (len > 0) {
-        syscall3(SYS_write, STDOUT_FD, (long) s, (long) len);
-    }
+    semi_call(SYS_WRITE0, (uint64_t)(uintptr_t)s);
 }
 
 void gem5_se_write(const char *buf, size_t len)
 {
-    if (buf == (void *) 0 || len == 0) {
+    if (buf == (void *)0 || len == 0) {
         return;
     }
-
-    syscall3(SYS_write, STDOUT_FD, (long) buf, (long) len);
+    /* SYS_WRITE0 writes until null; use SYS_WRITEC in a loop for binary data,
+     * or write in chunks. For text we can copy to a temp buffer with null. */
+    for (size_t i = 0; i < len; i++) {
+        gem5_se_putc(buf[i]);
+    }
 }
 
 void gem5_se_exit(int exit_code)
 {
-    syscall1(SYS_exit_group, (long) exit_code);
+    semi_exit_block.type = SEMI_EXIT_TYPE;
+    semi_exit_block.subcode = (uint64_t)(unsigned int)exit_code;
+    semi_call(SYS_EXIT, (uint64_t)(uintptr_t)&semi_exit_block);
 
-    /* Should not reach here, but loop just in case */
+    /* Should not reach here; loop if semihosting did not exit */
     while (1) {
         __asm__ __volatile__("wfi");
     }

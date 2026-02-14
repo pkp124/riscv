@@ -2,14 +2,9 @@
  * @file gem5_se_io.h
  * @brief gem5 Syscall Emulation (SE) mode I/O interface
  *
- * In gem5 SE mode, there is no MMIO UART. Instead, I/O is performed
- * using Linux-style syscalls (ecall). gem5 intercepts these and
- * emulates them on the host.
- *
- * Syscall numbers (RISC-V Linux ABI):
- *   - write(fd, buf, len):  a7 = 64
- *   - exit(code):           a7 = 93
- *   - exit_group(code):     a7 = 94
+ * In gem5 SE mode with RiscvBareMetal + RiscvSemihosting, I/O uses
+ * RISC-V semihosting (ARM ABI): SYS_WRITE0 for output, SYS_EXIT for
+ * shutdown. The app emits the ebreak trap sequence; gem5 handles it.
  *
  * This module is only active when GEM5_MODE_SE is defined.
  */
