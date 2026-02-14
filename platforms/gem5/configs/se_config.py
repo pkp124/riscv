@@ -26,7 +26,7 @@ Options:
 
 Note:
   The binary must be compiled for gem5 SE mode (GEM5_MODE_SE defined).
-  It should use ecall-based I/O instead of MMIO UART.
+  It should use semihosting (SYS_WRITE0/SYS_EXIT) for I/O.
 """
 
 import argparse
@@ -185,20 +185,16 @@ system.mem_ctrl.port = system.membus.mem_side_ports
 system.system_port = system.membus.cpu_side_ports
 
 # =============================================================================
-# Workload (Bare-Metal in M-mode)
+# Workload (Bare-Metal in M-mode + Semihosting)
 # =============================================================================
-# Use RiscvBareMetal so the CPU starts in M-mode. Process/SEWorkload runs in
-# user mode where mhartid is not accessible ("Illegal instruction" on csrr).
-# RiscvBareMetal loads the binary and resets threads for bare-metal execution.
-#
-# Note: RiscvBareMetal does not implement Linux syscall emulation. Our app
-# uses ecall for write/exit. Semihosting uses ebreak (different ABI). For full
-# gem5 SE support, the app would need to use semihosting or gem5 would need
-# a workload that combines M-mode + Linux syscall emulation.
+# RiscvBareMetal: CPU starts in M-mode (mhartid accessible), loads binary.
+# RiscvSemihosting: Handles ebreak trap sequence for SYS_WRITE0/SYS_EXIT.
+# The app uses semihosting (gem5_se_io.c) for I/O instead of Linux syscalls.
 # =============================================================================
 
 system.workload = RiscvBareMetal()
 system.workload.bootloader = args.cmd
+system.workload.semihosting = RiscvSemihosting()
 
 # =============================================================================
 # Root and Instantiation
