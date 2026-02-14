@@ -83,8 +83,12 @@ if not os.path.exists(args.cmd):
 # =============================================================================
 # System Configuration
 # =============================================================================
+# Use RiscvSystem + HiFive platform for gem5 25.x compatibility.
+# In gem5 25.x, Uart8250 requires a Platform parent (platform=Parent.any).
+# HiFive provides UART at 0x10000000, CLINT at 0x02000000, matching our app.
+# =============================================================================
 
-system = System()
+system = RiscvSystem()
 
 # Clock domain
 system.clk_domain = SrcClockDomain()
@@ -101,6 +105,44 @@ else:
 system.mem_ranges = [AddrRange(start=0x80000000, size=args.mem_size)]
 
 # =============================================================================
+# HiFive Platform (UART, CLINT, PLIC at standard addresses)
+# =============================================================================
+
+system.platform = HiFive()
+
+# RTCCLK for CLINT timer
+system.platform.rtc = RiscvRTC(frequency=Frequency("100MHz"))
+system.platform.clint.int_pin = system.platform.rtc.int_pin
+
+# IO and memory buses
+system.iobus = IOXBar()
+system.membus = SystemXBar()
+system.system_port = system.membus.cpu_side_ports
+
+# Connect platform PCI host to IO bus (required for HiFive off-chip devices)
+system.iobus.cpu_side_ports = system.platform.pci_host.up_request_port()
+system.iobus.mem_side_ports = system.platform.pci_host.up_response_port()
+system.platform.pci_bus.cpu_side_ports = (
+    system.platform.pci_host.down_request_port()
+)
+system.platform.pci_bus.default = system.platform.pci_host.down_response_port()
+system.platform.pci_bus.config_error_port = (
+    system.platform.pci_host.config_error.pio
+)
+
+# Bridge: IO bus <-> memory bus
+system.bridge = Bridge(delay="50ns")
+system.bridge.mem_side_port = system.iobus.cpu_side_ports
+system.bridge.cpu_side_port = system.membus.mem_side_ports
+system.bridge.ranges = system.platform._off_chip_ranges()
+
+# Attach platform devices (CLINT, PLIC to membus; UART to iobus)
+system.platform.attachOnChipIO(system.membus)
+system.platform.attachOffChipIO(system.iobus)
+system.platform.attachPlic()
+system.platform.setNumCores(args.num_cpus)
+
+# =============================================================================
 # CPU Configuration
 # =============================================================================
 
@@ -111,13 +153,19 @@ system.cpu = [cpu_class() for _ in range(args.num_cpus)]
 for i, cpu in enumerate(system.cpu):
     cpu.cpu_id = i
     cpu.createInterruptController()
+    cpu.createThreads()
+
+# PMA checker for uncacheable device regions
+uncacheable_range = [
+    *system.platform._on_chip_ranges(),
+    *system.platform._off_chip_ranges(),
+]
+for cpu in system.cpu:
+    cpu.mmu.pma_checker = PMAChecker(uncacheable=uncacheable_range)
 
 # =============================================================================
 # Memory Hierarchy
 # =============================================================================
-
-# Create memory bus
-system.membus = SystemXBar()
 
 if "Atomic" in args.cpu_type:
     # Atomic CPU: connect directly to memory bus (no caches needed)
@@ -126,11 +174,9 @@ if "Atomic" in args.cpu_type:
         cpu.dcache_port = system.membus.cpu_side_ports
 else:
     # Timing/Minor/O3 CPU: add L1 caches
-    # L2 bus for cache-to-memory interconnect
     system.l2bus = L2XBar()
 
     for cpu in system.cpu:
-        # L1 instruction cache
         cpu.icache = Cache(
             size=args.l1i_size,
             assoc=2,
@@ -143,7 +189,6 @@ else:
         cpu.icache.cpu_side = cpu.icache_port
         cpu.icache.mem_side = system.l2bus.cpu_side_ports
 
-        # L1 data cache
         cpu.dcache = Cache(
             size=args.l1d_size,
             assoc=4,
@@ -156,7 +201,6 @@ else:
         cpu.dcache.cpu_side = cpu.dcache_port
         cpu.dcache.mem_side = system.l2bus.cpu_side_ports
 
-    # L2 cache
     system.l2cache = Cache(
         size=args.l2_size,
         assoc=8,
@@ -178,24 +222,10 @@ system.mem_ctrl.dram = DDR4_2400_16x4()
 system.mem_ctrl.dram.range = system.mem_ranges[0]
 system.mem_ctrl.port = system.membus.mem_side_ports
 
-# =============================================================================
-# System Port
-# =============================================================================
-
-system.system_port = system.membus.cpu_side_ports
-
-# =============================================================================
-# UART (Uart8250 at 0x10000000)
-# =============================================================================
-
-# gem5 provides Uart8250 which is NS16550A compatible
-system.uart = Uart8250()
-system.uart.pio_addr = 0x10000000
-system.uart.pio = system.membus.mem_side_ports
-
-# Terminal for UART output
-system.terminal = Terminal()
-system.uart.terminal = system.terminal
+# IO bridge for memory access from IO devices
+system.iobridge = Bridge(delay="50ns", ranges=system.mem_ranges)
+system.iobridge.cpu_side_port = system.iobus.mem_side_ports
+system.iobridge.mem_side_port = system.membus.cpu_side_ports
 
 # =============================================================================
 # Workload (Bare-Metal)
