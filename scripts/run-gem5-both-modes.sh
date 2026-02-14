@@ -8,8 +8,8 @@
 #
 # Prerequisites:
 #   - RISC-V toolchain (riscv64-unknown-elf-gcc)
-#   - gem5 built at /opt/gem5/build/RISCV/gem5.opt
-#     Install with: INSTALL_GEM5=1 ./scripts/setup-simulators.sh
+#   - gem5 at /opt/gem5/build/RISCV/gem5.opt
+#     Use devcontainer (includes gem5), or: INSTALL_GEM5=1 ./scripts/setup-simulators.sh
 #
 # Usage:
 #   ./scripts/run-gem5-both-modes.sh [--build-only] [--se-only] [--fs-only]
