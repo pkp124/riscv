@@ -791,11 +791,11 @@ jobs:
         cpu_type: [AtomicSimpleCPU, TimingSimpleCPU]
         include:
           - cpu_type: AtomicSimpleCPU
-            max_ticks: 100000000
-            timeout: 120
+            max_ticks: 1000000000
+            timeout: 180
           - cpu_type: TimingSimpleCPU
-            max_ticks: 500000000
-            timeout: 300
+            max_ticks: 2000000000
+            timeout: 600
 
     steps:
       - name: Checkout

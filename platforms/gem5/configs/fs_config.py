@@ -110,6 +110,10 @@ system.mem_ranges = [AddrRange(start=0x80000000, size=args.mem_size)]
 
 system.platform = HiFive()
 
+# Redirect terminal output to stdout (required for non-interactive/CI runs)
+# Default "file" dumps to a file; "stdoutput" prints to gem5's stdout
+system.platform.terminal.outfile = "stdoutput"
+
 # RTCCLK for CLINT timer
 system.platform.rtc = RiscvRTC(frequency=Frequency("100MHz"))
 system.platform.clint.int_pin = system.platform.rtc.int_pin
