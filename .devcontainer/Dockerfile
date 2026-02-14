@@ -1,28 +1,23 @@
 # =============================================================================
 # RISC-V Bare-Metal Development Environment
 # =============================================================================
-# This Dockerfile creates a comprehensive development environment for
-# RISC-V bare-metal development, including:
-# - RISC-V GCC cross-compiler toolchain (with RVV support)
-# - QEMU system emulator (RISC-V)
-# - Spike ISA simulator
-# - gem5 (RISC-V simulator, ~30-60 min build)
-# - Renode (from project .deb package)
-# - Static analysis tools
-# - GDB for debugging
+# Uses antmicro/renode as base - the Renode .deb has GTK# deps not available
+# on Ubuntu 24.04. antmicro/renode (Ubuntu 22.04) has Renode pre-installed.
 # =============================================================================
 
-FROM ubuntu:24.04
+FROM antmicro/renode:latest
 
 LABEL maintainer="RISC-V System Simulation Project"
 LABEL description="Development environment for RISC-V bare-metal simulation"
+
+USER root
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
 # =============================================================================
-# Stage 1: System packages
+# Stage 1: System packages (add to Renode base)
 # =============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Build essentials
@@ -112,19 +107,7 @@ RUN git clone --depth 1 --branch ${GEM5_BRANCH} https://github.com/gem5/gem5.git
     echo "gem5 build complete"
 
 # =============================================================================
-# Stage 4: Install Renode (from project .deb package)
-# =============================================================================
-# Renode requires Mono 5.20+. Use ARG to easily update version.
-ARG RENODE_VERSION=1.16.0
-
-RUN apt-get update && apt-get install -y --no-install-recommends mono-complete && \
-    wget -q "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb" -O /tmp/renode.deb && \
-    apt-get install -y /tmp/renode.deb && \
-    rm /tmp/renode.deb && \
-    rm -rf /var/lib/apt/lists/*
-
-# =============================================================================
-# Stage 5: Verify installations
+# Stage 4: Verify installations
 # =============================================================================
 RUN echo "=== Toolchain Versions ===" && \
     riscv64-unknown-elf-gcc --version | head -1 && \
@@ -139,7 +122,7 @@ RUN echo "=== Toolchain Versions ===" && \
     echo "=== All tools verified ==="
 
 # =============================================================================
-# Stage 6: Environment setup
+# Stage 5: Environment setup
 # =============================================================================
 
 # Set PATH to include RISC-V tools
