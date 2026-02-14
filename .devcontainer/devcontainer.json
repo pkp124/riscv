@@ -4,8 +4,7 @@
         "dockerfile": "Dockerfile",
         "context": ".",
         "args": {
-            "SPIKE_COMMIT": "master",
-            "RENODE_VERSION": "1.16.0"
+            "SPIKE_COMMIT": "master"
         }
     },
     "features": {
