@@ -218,6 +218,11 @@ jobs:
           path: /opt/gem5
           key: gem5-riscv-${{ runner.os }}-v23-2
 
+      - name: Install gem5 runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgoogle-perftools4
+
       - name: Find ELF binary
         id: find-elf
         run: |
@@ -323,6 +328,11 @@ jobs:
         with:
           path: /opt/gem5
           key: gem5-riscv-${{ runner.os }}-v23-2
+
+      - name: Install gem5 runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgoogle-perftools4
 
       - name: Find SE ELF binary
         id: find-elf
