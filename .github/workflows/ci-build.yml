@@ -516,9 +516,6 @@ jobs:
       - name: Verify gem5
         run: docker run --rm riscv-dev /opt/gem5/build/RISCV/gem5.opt --version 2>&1 | head -3 || true
 
-      - name: Verify Renode
-        run: docker run --rm riscv-dev renode --version 2>&1 | head -1 || true
-
   # ============================================================
   # Job 4: Simulation Tests (Spike)
   # ============================================================

@@ -1,23 +1,21 @@
 # =============================================================================
 # RISC-V Bare-Metal Development Environment
 # =============================================================================
-# Uses antmicro/renode as base - the Renode .deb has GTK# deps not available
-# on Ubuntu 24.04. antmicro/renode (Ubuntu 22.04) has Renode pre-installed.
+# Toolchain, QEMU, Spike, gem5. Renode simulations use antmicro/renode image
+# in CI only (docker run antmicro/renode).
 # =============================================================================
 
-FROM antmicro/renode:latest
+FROM ubuntu:24.04
 
 LABEL maintainer="RISC-V System Simulation Project"
 LABEL description="Development environment for RISC-V bare-metal simulation"
-
-USER root
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
 # =============================================================================
-# Stage 1: System packages (add to Renode base)
+# Stage 1: System packages
 # =============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Build essentials
@@ -115,7 +113,6 @@ RUN echo "=== Toolchain Versions ===" && \
     qemu-system-riscv64 --version | head -1 && \
     spike --help 2>&1 | head -1 || true && \
     /opt/gem5/build/RISCV/gem5.opt --version 2>&1 | head -1 || true && \
-    renode --version | head -1 || true && \
     gdb-multiarch --version | head -1 && \
     cppcheck --version && \
     clang-format --version && \
