@@ -187,11 +187,21 @@ system.system_port = system.membus.cpu_side_ports
 # =============================================================================
 # Workload (Bare-Metal in M-mode + Semihosting)
 # =============================================================================
-# RiscvBareMetal: CPU starts in M-mode (mhartid accessible), loads binary.
-# RiscvSemihosting: Handles ebreak trap sequence for SYS_WRITE0/SYS_EXIT.
-# The app uses semihosting (gem5_se_io.c) for I/O instead of Linux syscalls.
+# In SE mode, each CPU requires workload (Process) for each thread; the CPU
+# constructor checks workload.size() == numThreads. RiscvBareMetal loads the
+# binary and sets up M-mode; we assign a Process per CPU to satisfy the check.
+# RiscvSemihosting handles the ebreak trap sequence for SYS_WRITE0/SYS_EXIT.
 # =============================================================================
 
+# Process per CPU (satisfies cpu.workload.size() == numThreads)
+process = Process()
+process.cmd = [args.cmd]
+if args.options:
+    process.cmd += args.options.split()
+for cpu in system.cpu:
+    cpu.workload = process
+
+# System workload: loads binary, M-mode, semihosting
 system.workload = RiscvBareMetal()
 system.workload.bootloader = args.cmd
 system.workload.semihosting = RiscvSemihosting()
