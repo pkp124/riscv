@@ -26,7 +26,7 @@ Options:
 
 Note:
   The binary must be compiled for gem5 SE mode (GEM5_MODE_SE defined).
-  It should use semihosting (SYS_WRITE0/SYS_EXIT) for I/O.
+  It uses Linux syscalls (write/exit_group) via ecall for I/O.
 """
 
 import argparse
@@ -185,22 +185,20 @@ system.mem_ctrl.port = system.membus.mem_side_ports
 system.system_port = system.membus.cpu_side_ports
 
 # =============================================================================
-# Workload (Bare-Metal in M-mode + Semihosting)
+# Workload (Process + SEWorkload)
 # =============================================================================
-# RiscvBareMetal loads the binary and sets up M-mode; RiscvSemihosting handles
-# the ebreak trap sequence for SYS_WRITE0/SYS_EXIT.
-#
-# NOTE: gem5 SE mode has a structural incompatibility: BaseCPU requires
-# cpu.workload.size() == numThreads (Process objects), but Process requires
-# system.workload to be SEWorkload. RiscvBareMetal is Workload, not SEWorkload.
-# Using Process+SEWorkload runs in user mode (mhartid inaccessible). This config
-# uses RiscvBareMetal alone; it will fail the CPU workload check. Disable the
-# gem5 SE CI job until gem5 supports bare-metal SE (e.g. workload check bypass).
+# Process + SEWorkload runs in user mode; app uses li a0,0 instead of mhartid
+# and ecall for Linux syscalls (write/exit_group). Single-threaded only.
 # =============================================================================
 
-system.workload = RiscvBareMetal()
-system.workload.bootloader = args.cmd
-system.workload.semihosting = RiscvSemihosting()
+system.workload = SEWorkload.init_compatible(args.cmd)
+
+process = Process()
+process.cmd = [args.cmd]
+if args.options:
+    process.cmd += args.options.split()
+for cpu in system.cpu:
+    cpu.workload = process
 
 # =============================================================================
 # Root and Instantiation
