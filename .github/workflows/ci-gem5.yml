@@ -140,13 +140,36 @@ jobs:
           retention-days: 7
 
   # =========================================================================
-  # Job 2: Run gem5 FS Simulations
+  # Job 2: Build Devcontainer (single build for all simulation jobs)
+  # =========================================================================
+  build-devcontainer:
+    name: "Build: Devcontainer"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build devcontainer image
+        uses: docker/build-push-action@v6
+        timeout-minutes: 90
+        with:
+          context: .devcontainer
+          load: true
+          tags: riscv-dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # =========================================================================
+  # Job 3: Run gem5 FS Simulations
   # =========================================================================
   simulate-fs:
     name: "Simulate: gem5 FS (${{ matrix.cpu_type }})"
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [build-gem5]
+    needs: [build-gem5, build-devcontainer]
     if: |
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.event_name != 'workflow_dispatch' || github.event.inputs.run_simulation == 'true')
@@ -175,15 +198,13 @@ jobs:
           name: gem5-elfs
           path: build/
 
-      - name: Build devcontainer (toolchain, Spike, gem5)
+      - name: Load devcontainer from cache
         uses: docker/build-push-action@v6
-        timeout-minutes: 90
         with:
           context: .devcontainer
           load: true
           tags: riscv-dev
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Find ELF binary
         id: find-elf
@@ -268,13 +289,13 @@ jobs:
         continue-on-error: true
 
   # =========================================================================
-  # Job 3: Run gem5 SE Simulation
+  # Job 4: Run gem5 SE Simulation
   # =========================================================================
   simulate-se:
     name: "Simulate: gem5 SE"
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: [build-gem5]
+    needs: [build-gem5, build-devcontainer]
     if: |
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.event_name != 'workflow_dispatch' || github.event.inputs.run_simulation == 'true')
@@ -289,15 +310,13 @@ jobs:
           name: gem5-elfs
           path: build/
 
-      - name: Build devcontainer (toolchain, Spike, gem5)
+      - name: Load devcontainer from cache
         uses: docker/build-push-action@v6
-        timeout-minutes: 90
         with:
           context: .devcontainer
           load: true
           tags: riscv-dev
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Find SE ELF binary
         id: find-elf
@@ -353,7 +372,7 @@ jobs:
         continue-on-error: true
 
   # =========================================================================
-  # Job 4: Performance Comparison
+  # Job 5: Performance Comparison
   # =========================================================================
   compare-stats:
     name: "Compare: CPU Model Performance"

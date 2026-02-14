@@ -441,12 +441,46 @@ jobs:
           retention-days: 30
 
   # ============================================================
+  # Job 3b: Build Devcontainer (single build for all downstream jobs)
+  # ============================================================
+  build-devcontainer:
+    name: "Build: Devcontainer"
+    runs-on: ubuntu-24.04
+    needs: lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build devcontainer image
+        uses: docker/build-push-action@v6
+        timeout-minutes: 90
+        with:
+          context: .devcontainer
+          load: true
+          tags: riscv-dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify toolchain
+        run: docker run --rm riscv-dev riscv64-unknown-elf-gcc --version
+
+      - name: Verify QEMU
+        run: docker run --rm riscv-dev qemu-system-riscv64 --version
+
+      - name: Verify Spike
+        run: docker run --rm riscv-dev spike --help 2>&1 | head -5 || true
+
+      - name: Verify gem5
+        run: docker run --rm riscv-dev /opt/gem5/build/RISCV/gem5.opt --version 2>&1 | head -3 || true
+
+  # ============================================================
   # Job 4: Simulation Tests (Spike)
   # ============================================================
   simulate-spike:
     name: "Simulate Spike: ${{ matrix.name }}"
     runs-on: ubuntu-24.04
-    needs: build
+    needs: [build, build-devcontainer]
     strategy:
       fail-fast: false
       matrix:
@@ -481,18 +515,13 @@ jobs:
           path: artifacts/
         continue-on-error: true
 
-      - name: Build devcontainer (Spike, gem5)
+      - name: Load devcontainer from cache
         uses: docker/build-push-action@v6
-        timeout-minutes: 90
         with:
           context: .devcontainer
           load: true
           tags: riscv-dev
           cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Verify Spike in container
-        run: docker run --rm riscv-dev spike --help 2>&1 | head -5 || true
 
       - name: Run Spike Simulation
         timeout-minutes: 2
@@ -710,38 +739,3 @@ jobs:
             echo "Review the diff above to determine if differences are acceptable."
           fi
 
-  # ============================================================
-  # Job 6: Devcontainer Build Verification
-  # ============================================================
-  devcontainer:
-    name: "Devcontainer Build"
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build devcontainer image
-        uses: docker/build-push-action@v6
-        timeout-minutes: 90
-        with:
-          context: .devcontainer
-          load: true
-          tags: riscv-dev
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Verify toolchain
-        run: |
-          docker run --rm riscv-dev riscv64-unknown-elf-gcc --version
-
-      - name: Verify QEMU
-        run: |
-          docker run --rm riscv-dev qemu-system-riscv64 --version
-
-      - name: Verify Spike
-        run: |
-          docker run --rm riscv-dev spike --help 2>&1 | head -5 || true
-
-      - name: Verify gem5
-        run: |
-          docker run --rm riscv-dev /opt/gem5/build/RISCV/gem5.opt --version 2>&1 | head -3 || true
