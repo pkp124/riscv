@@ -38,7 +38,7 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 ✅ gem5 platform support: SE mode (syscall I/O), FS mode (UART + m5ops exit)  
 ✅ gem5 Python configs: fs_config.py (4 CPU models), se_config.py  
 ✅ gem5 performance analysis: parse-gem5-stats.py (JSON/CSV/comparison)  
-✅ gem5 CI workflow: ci-gem5.yml (build, simulate, compare stats)  
+✅ gem5 simulations in ci-build.yml (unified workflow)  
 
 ### What Doesn't Exist Yet
 ❌ Renode platform support (Phase 7)  
