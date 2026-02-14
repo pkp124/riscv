@@ -12,5 +12,10 @@ machine LoadPlatformDescription @platforms/renode/riscv_virt.repl
 # Load ELF (path passed via 'elf' variable from run target)
 sysbus LoadELF $elf
 
-# Start simulation (UART output goes to Renode console by default)
+# Capture UART to file (headless/CI: UART does not go to stdout by default)
+uart0 CreateFileBackend "/workspace/uart_output.txt" false
+
+# Run simulation for 5 seconds to capture UART output
 start
+emulation runFor "00:00:05"
+quit

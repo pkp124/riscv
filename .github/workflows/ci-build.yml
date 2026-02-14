@@ -764,38 +764,45 @@ jobs:
             renode -e "set elf \"${ELF_IN_CONTAINER}\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
           echo "=== Simulation Output ==="
           cat output.log || echo "No output generated"
+          echo "=== UART Output (from uart_output.txt) ==="
+          cat uart_output.txt 2>/dev/null || echo "No UART output file"
 
       - name: Validate Output
         run: |
-          if [ ! -f output.log ]; then
+          # Validate UART output (captured to file by Renode)
+          LOG="uart_output.txt"
+          if [ ! -f "$LOG" ]; then
+            LOG="output.log"
+          fi
+          if [ ! -f "$LOG" ]; then
             echo "No output to validate."
             exit 0
           fi
 
           PASS=true
 
-          if grep -q "Hello RISC-V" output.log; then
+          if grep -q "Hello RISC-V" "$LOG"; then
             echo "PASS: Found 'Hello RISC-V'"
           else
             echo "FAIL: Missing 'Hello RISC-V'"
             PASS=false
           fi
 
-          if grep -q "Platform: Renode" output.log; then
+          if grep -q "Platform: Renode" "$LOG"; then
             echo "PASS: Platform correctly identified as Renode"
           else
             echo "FAIL: Platform not identified as Renode"
             PASS=false
           fi
 
-          if grep -q "\[RESULT\].*PASS" output.log; then
+          if grep -q "\[RESULT\].*PASS" "$LOG"; then
             echo "PASS: Test results show PASS"
           else
             echo "FAIL: Test results missing or show failure"
             PASS=false
           fi
 
-          if grep -q "Phase 2 complete" output.log; then
+          if grep -q "Phase 2 complete" "$LOG"; then
             echo "PASS: Phase 2 application completed successfully"
           else
             echo "FAIL: Phase 2 application did not complete"
@@ -817,7 +824,9 @@ jobs:
         with:
           name: sim-log-renode-single-rvv0
           overwrite: true
-          path: output.log
+          path: |
+            output.log
+            uart_output.txt
           retention-days: 30
           if-no-files-found: warn
 
