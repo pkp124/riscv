@@ -201,8 +201,10 @@ function(add_renode_run_target TARGET_NAME ELF_TARGET)
         return()
     endif()
     
+    # Pass ELF path via 'elf' variable; run from source dir so platform paths resolve
     add_custom_target(${TARGET_NAME}
-        COMMAND ${RENODE} -e "s @${RENODE_SCRIPT}"
+        COMMAND ${RENODE} -e "set elf \"$<TARGET_FILE:${ELF_TARGET}>\"; s @${RENODE_SCRIPT}"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         DEPENDS ${ELF_TARGET}
         COMMENT "Running ${ELF_TARGET} on Renode"
         USES_TERMINAL

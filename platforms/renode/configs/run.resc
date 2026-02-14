@@ -1,0 +1,16 @@
+# Renode launch script for RISC-V bare-metal application
+# ======================================================
+# Usage: renode -e "set elf @path/to/app.elf; s @platforms/renode/configs/run.resc"
+# Or from build/renode: renode -e "set elf @${CMAKE_CURRENT_BINARY_DIR}/bin/app; s @${CMAKE_SOURCE_DIR}/platforms/renode/configs/run.resc"
+#
+# The 'elf' variable must be set before sourcing this script (by the run target).
+
+# Create machine and load platform
+mach create
+machine LoadPlatformDescription @platforms/renode/riscv_virt.repl
+
+# Load ELF (path passed via 'elf' variable from run target)
+sysbus LoadELF $elf
+
+# Start simulation (UART output goes to Renode console by default)
+start
