@@ -10,12 +10,18 @@
 # The workflow:
 #   1. Installs RISC-V toolchain
 #   2. Builds application for gem5 FS and SE modes
-#   3. Builds gem5 (cached between runs)
-#   4. Runs simulations with various CPU models
+#   3. Builds gem5 in official gem5 Docker image (cached between runs)
+#   4. Runs simulations in Docker with various CPU models
 #   5. Collects and uploads performance statistics
+#
+# Uses ghcr.io/gem5/ubuntu-24.04_all-dependencies for consistent environment
+# and to avoid libtcmalloc/runtime dependency issues.
 # =============================================================================
 
 name: CI - gem5 Simulation
+
+env:
+  GEM5_IMAGE: ghcr.io/gem5/ubuntu-24.04_all-dependencies:latest
 
 on:
   push:
@@ -151,29 +157,22 @@ jobs:
           path: /opt/gem5
           key: gem5-riscv-${{ runner.os }}-v23-2
 
-      - name: Install gem5 dependencies
-        if: steps.cache-gem5.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential git m4 scons zlib1g zlib1g-dev \
-            libprotobuf-dev protobuf-compiler libprotoc-dev \
-            libgoogle-perftools-dev python3-dev python3-pip \
-            libboost-all-dev pkg-config libhdf5-dev
-
-      - name: Build gem5
+      - name: Build gem5 (in Docker)
         if: steps.cache-gem5.outputs.cache-hit != 'true'
         timeout-minutes: 75
         run: |
-          git clone --depth 1 --branch stable https://github.com/gem5/gem5.git /opt/gem5
-          cd /opt/gem5
-          scons build/RISCV/gem5.opt -j$(nproc) 2>&1 | tail -20
+          sudo mkdir -p /opt/gem5
+          docker pull ${{ env.GEM5_IMAGE }}
+          docker run --rm -v /opt/gem5:/opt/gem5 ${{ env.GEM5_IMAGE }} \
+            bash -c 'git clone --depth 1 --branch stable https://github.com/gem5/gem5.git /opt/gem5 && \
+              cd /opt/gem5 && scons build/RISCV/gem5.opt -j$(nproc)' 2>&1 | tail -20
           echo "gem5 build complete"
-          ls -la build/RISCV/gem5.opt
+          ls -la /opt/gem5/build/RISCV/gem5.opt
 
       - name: Verify gem5 binary
         run: |
-          /opt/gem5/build/RISCV/gem5.opt --version || echo "gem5 version check"
+          docker run --rm -v /opt/gem5:/opt/gem5 ${{ env.GEM5_IMAGE }} \
+            /opt/gem5/build/RISCV/gem5.opt --version || echo "gem5 version check"
           echo "gem5 binary size: $(du -h /opt/gem5/build/RISCV/gem5.opt | cut -f1)"
 
   # =========================================================================
@@ -218,11 +217,6 @@ jobs:
           path: /opt/gem5
           key: gem5-riscv-${{ runner.os }}-v23-2
 
-      - name: Install gem5 runtime dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgoogle-perftools4
-
       - name: Find ELF binary
         id: find-elf
         run: |
@@ -251,7 +245,12 @@ jobs:
           echo "  Max Ticks: ${MAX_TICKS}"
           echo "================================================"
 
-          /opt/gem5/build/RISCV/gem5.opt \
+          docker run --rm \
+            -v /opt/gem5:/opt/gem5 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ${{ env.GEM5_IMAGE }} \
+            /opt/gem5/build/RISCV/gem5.opt \
             platforms/gem5/configs/fs_config.py \
             --cpu-type=${CPU_TYPE} \
             --cmd=${ELF} \
@@ -329,11 +328,6 @@ jobs:
           path: /opt/gem5
           key: gem5-riscv-${{ runner.os }}-v23-2
 
-      - name: Install gem5 runtime dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgoogle-perftools4
-
       - name: Find SE ELF binary
         id: find-elf
         run: |
@@ -354,7 +348,12 @@ jobs:
           echo "  ELF: ${ELF}"
           echo "================================================"
 
-          /opt/gem5/build/RISCV/gem5.opt \
+          docker run --rm \
+            -v /opt/gem5:/opt/gem5 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ${{ env.GEM5_IMAGE }} \
+            /opt/gem5/build/RISCV/gem5.opt \
             platforms/gem5/configs/se_config.py \
             --cpu-type=AtomicSimpleCPU \
             --cmd=${ELF} \
