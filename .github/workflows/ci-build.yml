@@ -759,7 +759,7 @@ jobs:
           # Path inside container: /workspace/artifacts/...
           ELF_IN_CONTAINER="/workspace/${ELF#${{ github.workspace }}/}"
           cd ${{ github.workspace }}
-          docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace \
+          docker run --rm --user root -v "${{ github.workspace }}:/workspace" -w /workspace \
             antmicro/renode:latest \
             renode -e "set elf \"${ELF_IN_CONTAINER}\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
           echo "=== Simulation Output ==="
