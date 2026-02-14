@@ -516,6 +516,9 @@ jobs:
       - name: Verify gem5
         run: docker run --rm riscv-dev /opt/gem5/build/RISCV/gem5.opt --version 2>&1 | head -3 || true
 
+      - name: Verify Renode
+        run: docker run --rm riscv-dev renode --version 2>&1 | head -1 || true
+
   # ============================================================
   # Job 4: Simulation Tests (Spike)
   # ============================================================
@@ -740,22 +743,6 @@ jobs:
           path: artifacts/
         continue-on-error: true
 
-      - name: Install Renode
-        run: |
-          # Renode requires Mono 5.20+. Install Mono first, then Renode .deb
-          echo "Installing Mono (required by Renode)..."
-          sudo apt-get update
-          sudo apt-get install -y mono-complete
-          mono --version | head -1
-
-          # Install Renode from .deb (apt package often unavailable on Ubuntu 24.04)
-          RENODE_VERSION="1.14.0"
-          echo "Installing Renode v${RENODE_VERSION} from GitHub releases..."
-          wget "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb" -O renode.deb
-          sudo dpkg -i renode.deb || sudo apt-get install -f -y
-          which renode
-          renode --version | head -1
-
       - name: Run Renode Simulation
         timeout-minutes: 2
         run: |
@@ -767,15 +754,17 @@ jobs:
             exit 0
           fi
 
-          # Resolve to absolute path for Renode
-          ELF=$(realpath "$ELF")
-          echo "Running Renode simulation..."
+          echo "Running Renode simulation (antmicro/renode Docker image)..."
           echo "ELF: ${ELF}"
           file "$ELF"
 
-          # Run from workspace root so platform paths resolve
+          # Use antmicro/renode image - mount workspace so platform paths resolve
+          # Path inside container: /workspace/artifacts/...
+          ELF_IN_CONTAINER="/workspace/${ELF#${{ github.workspace }}/}"
           cd ${{ github.workspace }}
-          timeout 60 renode -e "set elf \"${ELF}\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
+          docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace \
+            antmicro/renode:latest \
+            renode -e "set elf \"${ELF_IN_CONTAINER}\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
           echo "=== Simulation Output ==="
           cat output.log || echo "No output generated"
 

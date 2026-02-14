@@ -196,12 +196,15 @@ scons build/RISCV/gem5.opt -j$(nproc)
 ```
 
 #### Renode (Optional)
+The devcontainer includes Renode (from antmicro/renode). For standalone use:
+
 ```bash
-# Download from releases
+# Docker image (recommended)
+docker run -it -v $(pwd):/workspace -w /workspace antmicro/renode:latest
+
+# Or download .deb from releases
 wget https://github.com/renode/renode/releases/download/v1.14.0/renode_1.14.0_amd64.deb
 sudo dpkg -i renode_1.14.0_amd64.deb
-
-# Or follow: https://renode.readthedocs.io/en/latest/introduction/installing.html
 ```
 
 ---
