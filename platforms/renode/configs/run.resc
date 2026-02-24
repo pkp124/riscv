@@ -13,8 +13,9 @@ machine LoadPlatformDescription @platforms/renode/riscv_virt.repl
 sysbus LoadELF $elf
 
 # Capture UART to file (headless/CI: UART does not go to stdout by default)
+# Use relative path so it works for both local CTest and CI (writes to cwd)
 # Peripheral is on sysbus - use sysbus.uart0
-sysbus.uart0 CreateFileBackend "/workspace/uart_output.txt" false
+sysbus.uart0 CreateFileBackend "uart_output.txt" false
 
 # Run simulation for 5 seconds to capture UART output
 start

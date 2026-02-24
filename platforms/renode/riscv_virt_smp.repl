@@ -1,0 +1,53 @@
+/*
+ * RISC-V Virt Platform for Renode - 4-Hart SMP
+ * =============================================
+ * Multi-core variant matching QEMU virt / gem5 memory map.
+ * Same memory map as single-core, with 4 CPUs for SMP testing.
+ *
+ * Memory map:
+ *   0x80000000 - 0x87FFFFFF : RAM (128 MB)
+ *   0x02000000 - 0x0200FFFF : CLINT (timer, IPI)
+ *   0x0C000000 - 0x0C002000 : PLIC (interrupt controller)
+ *   0x10000000 - 0x10000FFF : UART0 (NS16550A)
+ */
+
+dram: Memory.MappedMemory @ sysbus 0x80000000
+    size: 0x8000000
+
+uart0: UART.NS16550 @ sysbus 0x10000000
+    IRQ -> plic@3
+
+cpu0: CPU.RiscV64 @ sysbus
+    cpuType: "rv64gc"
+    timeProvider: clint
+    hartId: 0
+
+cpu1: CPU.RiscV64 @ sysbus
+    cpuType: "rv64gc"
+    timeProvider: clint
+    hartId: 1
+
+cpu2: CPU.RiscV64 @ sysbus
+    cpuType: "rv64gc"
+    timeProvider: clint
+    hartId: 2
+
+cpu3: CPU.RiscV64 @ sysbus
+    cpuType: "rv64gc"
+    timeProvider: clint
+    hartId: 3
+
+plic: IRQControllers.PlatformLevelInterruptController @ sysbus 0x0C000000
+    0 -> cpu0@11
+    1 -> cpu1@11
+    2 -> cpu2@11
+    3 -> cpu3@11
+    numberOfSources: 52
+    numberOfContexts: 4
+
+clint: IRQControllers.CoreLevelInterruptor @ sysbus 0x02000000
+    [0, 1] -> cpu0@[3, 7]
+    [2, 3] -> cpu1@[3, 7]
+    [4, 5] -> cpu2@[3, 7]
+    [6, 7] -> cpu3@[3, 7]
+    frequency: 10000000
