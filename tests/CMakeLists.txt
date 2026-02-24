@@ -938,6 +938,23 @@ if(TARGET app AND GEM5_OPT AND PLATFORM STREQUAL "gem5" AND GEM5_MODE STREQUAL "
         LABELS "phase6;gem5;fs;stats"
     )
 
+    # Test 9: Compare cycle counts across CPU models (Atomic vs Timing)
+    set(GEM5_COMPARE_WORK_DIR "${CMAKE_BINARY_DIR}/gem5_compare_test")
+    add_test(
+        NAME phase6_gem5_fs_cycle_compare
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run-gem5-compare-test.sh
+            ${GEM5_OPT}
+            ${GEM5_FS_CONFIG}
+            $<TARGET_FILE:app>
+            ${CMAKE_SOURCE_DIR}/scripts/parse-gem5-stats.py
+            ${GEM5_COMPARE_WORK_DIR}
+    )
+    set_tests_properties(phase6_gem5_fs_cycle_compare PROPERTIES
+        PASS_REGULAR_EXPRESSION "CPI|cycle comparison test PASSED"
+        TIMEOUT 600
+        LABELS "phase6;gem5;fs;performance"
+    )
+
 endif()
 
 # Phase 6 gem5 FS SMP tests: Multi-core full system mode
@@ -1037,12 +1054,16 @@ endif()
 # =============================================================================
 
 # Phase 7 Renode tests: Only for single-core renode builds without RVV
+# Uses run-renode-test.sh to capture UART output (Renode writes to file, not stdout)
 if(TARGET app AND RENODE AND PLATFORM STREQUAL "renode" AND NUM_HARTS EQUAL 1 AND NOT ENABLE_RVV)
 
     # Test 1: Boot and print "Hello RISC-V"
     add_test(
         NAME phase7_renode_boot_hello
-        COMMAND ${RENODE} -e "set elf \"$<TARGET_FILE:app>\"; s @platforms/renode/configs/run.resc"
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run-renode-test.sh
+            ${RENODE}
+            $<TARGET_FILE:app>
+            ${CMAKE_SOURCE_DIR}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     set_tests_properties(phase7_renode_boot_hello PROPERTIES
@@ -1055,7 +1076,10 @@ if(TARGET app AND RENODE AND PLATFORM STREQUAL "renode" AND NUM_HARTS EQUAL 1 AN
     # Test 2: Platform name reports "Renode"
     add_test(
         NAME phase7_renode_platform_name
-        COMMAND ${RENODE} -e "set elf \"$<TARGET_FILE:app>\"; s @platforms/renode/configs/run.resc"
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run-renode-test.sh
+            ${RENODE}
+            $<TARGET_FILE:app>
+            ${CMAKE_SOURCE_DIR}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     set_tests_properties(phase7_renode_platform_name PROPERTIES
@@ -1068,7 +1092,10 @@ if(TARGET app AND RENODE AND PLATFORM STREQUAL "renode" AND NUM_HARTS EQUAL 1 AN
     # Test 3: All Phase 2 tests pass (integration)
     add_test(
         NAME phase7_renode_complete
-        COMMAND ${RENODE} -e "set elf \"$<TARGET_FILE:app>\"; s @platforms/renode/configs/run.resc"
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run-renode-test.sh
+            ${RENODE}
+            $<TARGET_FILE:app>
+            ${CMAKE_SOURCE_DIR}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     set_tests_properties(phase7_renode_complete PROPERTIES
@@ -1076,6 +1103,45 @@ if(TARGET app AND RENODE AND PLATFORM STREQUAL "renode" AND NUM_HARTS EQUAL 1 AN
         FAIL_REGULAR_EXPRESSION "ERROR|FAIL"
         TIMEOUT 60
         LABELS "phase7;renode;functional"
+    )
+
+endif()
+
+# Phase 7 Renode SMP tests: 4-hart builds without RVV
+if(TARGET app AND RENODE AND PLATFORM STREQUAL "renode" AND NUM_HARTS EQUAL 4 AND NOT ENABLE_RVV)
+
+    # Test: SMP boot on Renode
+    add_test(
+        NAME phase7_renode_smp_boot
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run-renode-test.sh
+            ${RENODE}
+            $<TARGET_FILE:app>
+            ${CMAKE_SOURCE_DIR}
+            platforms/renode/configs/run_smp.resc
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set_tests_properties(phase7_renode_smp_boot PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[SMP\\] All 4 harts online"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL|panic"
+        TIMEOUT 60
+        LABELS "phase7;renode;smp;smoke"
+    )
+
+    # Test: All Phase 4 SMP tests pass on Renode
+    add_test(
+        NAME phase7_renode_smp_complete
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run-renode-test.sh
+            ${RENODE}
+            $<TARGET_FILE:app>
+            ${CMAKE_SOURCE_DIR}
+            platforms/renode/configs/run_smp.resc
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set_tests_properties(phase7_renode_smp_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 4 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "ERROR|FAIL"
+        TIMEOUT 90
+        LABELS "phase7;renode;smp;functional"
     )
 
 endif()

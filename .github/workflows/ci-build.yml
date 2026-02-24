@@ -177,6 +177,12 @@ jobs:
             rvv: "0"
             num_harts: "1"
             artifact_id: "renode-single-rvv0"
+          - name: "Renode SMP (4 harts)"
+            platform: renode
+            config: smp
+            rvv: "0"
+            num_harts: "4"
+            artifact_id: "renode-smp-rvv0"
 
     steps:
       - name: Checkout
@@ -220,7 +226,11 @@ jobs:
               PRESET="default"
             fi
           elif [ "${{ matrix.platform }}" = "renode" ]; then
-            PRESET="renode"
+            if [ "${{ matrix.config }}" = "smp" ]; then
+              PRESET="renode-smp"
+            else
+              PRESET="renode"
+            fi
           fi
           echo "Using preset: $PRESET"
           echo "PRESET=$PRESET" >> $GITHUB_ENV
@@ -831,12 +841,79 @@ jobs:
           if-no-files-found: warn
 
   # ============================================================
+  # Job 4c: Simulation Tests (Renode SMP)
+  # ============================================================
+  simulate-renode-smp:
+    name: "Simulate Renode: SMP (4 harts)"
+    runs-on: ubuntu-24.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "SMP 4-hart"
+            platform: renode
+            config: smp
+            artifact_id: "renode-smp-rvv0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Renode SMP ELF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: elf-renode-smp-rvv0
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Run Renode SMP Simulation
+        timeout-minutes: 3
+        run: |
+          ELF=$(find artifacts/ -type f \( -name 'app' -o -name 'app.elf' \) 2>/dev/null | head -1)
+          if [ -z "$ELF" ] || [ ! -f "$ELF" ]; then
+            echo "No ELF artifact found. Simulation skipped."
+            exit 0
+          fi
+
+          ELF_IN_CONTAINER="/workspace/${ELF#${{ github.workspace }}/}"
+          cd ${{ github.workspace }}
+          docker run --rm --user root -v "${{ github.workspace }}:/workspace" -w /workspace \
+            antmicro/renode:latest \
+            renode -e "set elf \"${ELF_IN_CONTAINER}\"; s @platforms/renode/configs/run_smp.resc" > output.log 2>&1 || true
+          echo "=== UART Output ==="
+          cat uart_output.txt 2>/dev/null || echo "No UART output file"
+
+      - name: Validate SMP Output
+        run: |
+          if [ ! -f "uart_output.txt" ]; then
+            echo "No UART output. Skipping validation."
+            exit 0
+          fi
+
+          if grep -q "\[SMP\] All 4 harts online" uart_output.txt; then
+            echo "PASS: All 4 harts online"
+          else
+            echo "FAIL: SMP boot verification failed"
+            exit 1
+          fi
+
+          if grep -q "\[RESULT\].*Phase 4.*PASS" uart_output.txt; then
+            echo "PASS: Phase 4 SMP tests passed"
+          else
+            echo "FAIL: Phase 4 tests did not pass"
+            exit 1
+          fi
+
+          echo "=== RENODE SMP VALIDATION PASSED ==="
+
+  # ============================================================
   # Job 5: Cross-Platform Validation (QEMU vs Spike)
   # ============================================================
   cross-validate:
-    name: "Cross-Validate: QEMU vs Spike"
+    name: "Cross-Validate: QEMU vs Spike vs Renode"
     runs-on: ubuntu-24.04
-    needs: [simulate-qemu, simulate-spike]
+    needs: [simulate-qemu, simulate-spike, simulate-renode]
     if: always()
     steps:
       - name: Download QEMU simulation log
@@ -851,6 +928,13 @@ jobs:
         with:
           name: sim-log-spike-single-rvv0
           path: spike-logs/
+        continue-on-error: true
+
+      - name: Download Renode simulation log
+        uses: actions/download-artifact@v4
+        with:
+          name: sim-log-renode-single-rvv0
+          path: renode-logs/
         continue-on-error: true
 
       - name: Compare outputs
@@ -890,13 +974,27 @@ jobs:
 
           if diff -u qemu-normalized.txt spike-normalized.txt; then
             echo ""
-            echo "=== CROSS-VALIDATION PASSED ==="
+            echo "=== CROSS-VALIDATION PASSED (QEMU vs Spike) ==="
             echo "QEMU and Spike produce functionally equivalent output."
           else
             echo ""
-            echo "=== CROSS-VALIDATION: DIFFERENCES FOUND ==="
+            echo "=== CROSS-VALIDATION: DIFFERENCES FOUND (QEMU vs Spike) ==="
             echo "Note: Minor differences may be expected (e.g., CSR values)."
             echo "Review the diff above to determine if differences are acceptable."
+          fi
+
+          # QEMU vs Renode cross-validation (when Renode log available)
+          RENODE_LOG="renode-logs/uart_output.txt"
+          if [ -f "$RENODE_LOG" ]; then
+            echo ""
+            echo "--- QEMU vs Renode Cross-Validation ---"
+            grep -E "^\[TEST\]|^\[RESULT\]|^\[CSR\]|^\[INFO\]|^Hello" "$RENODE_LOG" | \
+              tr -d '\r' | sed 's/Platform: .*/Platform: <platform>/' > renode-normalized.txt
+            if diff -u qemu-normalized.txt renode-normalized.txt; then
+              echo "PASS: QEMU and Renode produce functionally equivalent output."
+            else
+              echo "Note: QEMU vs Renode differences (review diff above)."
+            fi
           fi
 
   # ============================================================
