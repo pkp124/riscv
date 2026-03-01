@@ -28,9 +28,27 @@ UART_FILE="${WORK_DIR}/uart_output.txt"
 
 cd "$WORK_DIR"
 
+# Generate a .resc file with paths embedded (Renode variable expansion @$elf
+# fails in some versions - "Parameters did not match the signature")
+if [[ "$RESC_SCRIPT" == *"run_smp"* ]]; then
+    PLATFORM_REPL="platforms/renode/riscv_virt_smp.repl"
+else
+    PLATFORM_REPL="platforms/renode/riscv_virt.repl"
+fi
+
+GEN_RESC="${WORK_DIR}/.renode_run_$$.resc"
+trap "rm -f '$GEN_RESC'" EXIT
+cat > "$GEN_RESC" << EOF
+mach create
+machine LoadPlatformDescription @${PLATFORM_REPL}
+sysbus LoadELF @${ELF_ABS}
+sysbus.uart0 CreateFileBackend "${UART_FILE}" false
+start
+quit
+EOF
+
 # Run Renode with 15s timeout (app completes in ~1s; timeout ensures clean exit)
-# Pass elf and uart_file for run.resc
-timeout 15 "$RENODE" -e "set elf \"$ELF_ABS\"; set uart_file \"$UART_FILE\"; s @${RESC_SCRIPT}" > renode.log 2>&1 || true
+timeout 15 "$RENODE" -e "s @${GEN_RESC}" > renode.log 2>&1 || true
 
 # Output UART capture for CTest validation
 if [ -f "$UART_FILE" ]; then
