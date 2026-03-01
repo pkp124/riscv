@@ -841,6 +841,45 @@ jobs:
           if-no-files-found: warn
 
   # ============================================================
+  # Job 4b2: Renode CTest (build + run phase7_renode tests in container)
+  # ============================================================
+  renode-ctest:
+    name: "Renode CTest"
+    runs-on: ubuntu-24.04
+    needs: lint
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and run Renode CTest (antmicro/renode container)
+        run: |
+          docker run --rm --user root \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            antmicro/renode:latest \
+            bash -c "
+              set -e
+              echo '=== Installing RISC-V toolchain and CMake ==='
+              apt-get update -qq
+              apt-get install -y -qq gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf cmake
+              riscv64-unknown-elf-gcc --version | head -1
+              renode --version | head -1
+
+              echo ''
+              echo '=== Configuring (renode preset) ==='
+              cmake --preset renode
+
+              echo ''
+              echo '=== Building ==='
+              cmake --build build/renode
+
+              echo ''
+              echo '=== Running Renode CTest ==='
+              ctest --test-dir build/renode -R phase7_renode --output-on-failure
+            "
+
+  # ============================================================
   # Job 4c: Simulation Tests (Renode SMP)
   # ============================================================
   simulate-renode-smp:
