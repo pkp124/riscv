@@ -51,6 +51,7 @@ gem5-build/
 m5out/
 output.log
 *.log
+uart_output.txt
 
 # Editor files
 .vscode/settings.json

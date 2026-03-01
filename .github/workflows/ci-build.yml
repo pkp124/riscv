@@ -771,7 +771,7 @@ jobs:
           cd ${{ github.workspace }}
           docker run --rm --user root -v "${{ github.workspace }}:/workspace" -w /workspace \
             antmicro/renode:latest \
-            renode -e "set elf \"${ELF_IN_CONTAINER}\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
+            renode -e "set elf \"${ELF_IN_CONTAINER}\"; set uart_file \"/workspace/uart_output.txt\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
           echo "=== Simulation Output ==="
           cat output.log || echo "No output generated"
           echo "=== UART Output (from uart_output.txt) ==="
@@ -880,7 +880,7 @@ jobs:
           cd ${{ github.workspace }}
           docker run --rm --user root -v "${{ github.workspace }}:/workspace" -w /workspace \
             antmicro/renode:latest \
-            renode -e "set elf \"${ELF_IN_CONTAINER}\"; s @platforms/renode/configs/run_smp.resc" > output.log 2>&1 || true
+            renode -e "set elf \"${ELF_IN_CONTAINER}\"; set uart_file \"/workspace/uart_output.txt\"; s @platforms/renode/configs/run_smp.resc" > output.log 2>&1 || true
           echo "=== UART Output ==="
           cat uart_output.txt 2>/dev/null || echo "No UART output file"
 
