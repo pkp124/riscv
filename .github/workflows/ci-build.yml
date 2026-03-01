@@ -765,13 +765,21 @@ jobs:
           echo "ELF: ${ELF}"
           file "$ELF"
 
-          # Use antmicro/renode image - mount workspace so platform paths resolve
-          # Path inside container: /workspace/artifacts/...
-          ELF_IN_CONTAINER="/workspace/${ELF#${{ github.workspace }}/}"
           cd ${{ github.workspace }}
+          # Use generated .resc with paths embedded (Renode @$elf variable expansion fails in CI)
+          ELF_IN_CONTAINER="/workspace/${ELF}"
+          cat > renode_ci.resc << EOF
+          mach create
+          machine LoadPlatformDescription @platforms/renode/riscv_virt.repl
+          sysbus LoadELF @${ELF_IN_CONTAINER}
+          sysbus.uart0 CreateFileBackend "/workspace/uart_output.txt" false
+          start
+          quit
+          EOF
+
           docker run --rm --user root -v "${{ github.workspace }}:/workspace" -w /workspace \
             antmicro/renode:latest \
-            renode -e "set elf \"${ELF_IN_CONTAINER}\"; set uart_file \"/workspace/uart_output.txt\"; s @platforms/renode/configs/run.resc" > output.log 2>&1 || true
+            renode -e "s @renode_ci.resc" > output.log 2>&1 || true
           echo "=== Simulation Output ==="
           cat output.log || echo "No output generated"
           echo "=== UART Output (from uart_output.txt) ==="
@@ -915,11 +923,20 @@ jobs:
             exit 0
           fi
 
-          ELF_IN_CONTAINER="/workspace/${ELF#${{ github.workspace }}/}"
           cd ${{ github.workspace }}
+          ELF_IN_CONTAINER="/workspace/${ELF}"
+          cat > renode_ci_smp.resc << EOF
+          mach create
+          machine LoadPlatformDescription @platforms/renode/riscv_virt_smp.repl
+          sysbus LoadELF @${ELF_IN_CONTAINER}
+          sysbus.uart0 CreateFileBackend "/workspace/uart_output.txt" false
+          start
+          quit
+          EOF
+
           docker run --rm --user root -v "${{ github.workspace }}:/workspace" -w /workspace \
             antmicro/renode:latest \
-            renode -e "set elf \"${ELF_IN_CONTAINER}\"; set uart_file \"/workspace/uart_output.txt\"; s @platforms/renode/configs/run_smp.resc" > output.log 2>&1 || true
+            renode -e "s @renode_ci_smp.resc" > output.log 2>&1 || true
           echo "=== UART Output ==="
           cat uart_output.txt 2>/dev/null || echo "No UART output file"
 
