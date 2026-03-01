@@ -22,16 +22,21 @@ ELF_PATH="$2"
 WORK_DIR="$3"
 RESC_SCRIPT="${4:-platforms/renode/configs/run.resc}"
 
+# Absolute paths for Renode (required for CreateFileBackend in headless mode)
+ELF_ABS="$(cd "$(dirname "$ELF_PATH")" && pwd)/$(basename "$ELF_PATH")"
+UART_FILE="${WORK_DIR}/uart_output.txt"
+
 cd "$WORK_DIR"
 
-# Run Renode (output goes to uart_output.txt)
-"$RENODE" -e "set elf \"$ELF_PATH\"; s @${RESC_SCRIPT}" > renode.log 2>&1 || true
+# Run Renode with 15s timeout (app completes in ~1s; timeout ensures clean exit)
+# Pass elf and uart_file for run.resc
+timeout 15 "$RENODE" -e "set elf \"$ELF_ABS\"; set uart_file \"$UART_FILE\"; s @${RESC_SCRIPT}" > renode.log 2>&1 || true
 
 # Output UART capture for CTest validation
-if [ -f "uart_output.txt" ]; then
-    cat uart_output.txt
+if [ -f "$UART_FILE" ]; then
+    cat "$UART_FILE"
 else
-    echo "[ERROR] UART output file not found. Renode log:"
+    echo "[ERROR] UART output file not found at $UART_FILE. Renode log:"
     cat renode.log 2>/dev/null || true
     exit 1
 fi

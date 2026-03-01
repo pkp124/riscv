@@ -1,23 +1,21 @@
 # Renode launch script for RISC-V bare-metal application
 # ======================================================
-# Usage: renode -e "set elf @path/to/app.elf; s @platforms/renode/configs/run.resc"
-# Or from build/renode: renode -e "set elf @${CMAKE_CURRENT_BINARY_DIR}/bin/app; s @${CMAKE_SOURCE_DIR}/platforms/renode/configs/run.resc"
+# Usage: renode -e "set elf \"path/to/app\"; set uart_file \"path/uart_output.txt\"; s @platforms/renode/configs/run.resc"
+# Variables: elf (required), uart_file (optional, default: uart_output.txt in cwd)
 #
-# The 'elf' variable must be set before sourcing this script (by the run target).
+# Use timeout in wrapper (e.g. timeout 15) - script starts emulation, no runFor/quit.
 
 # Create machine and load platform
 mach create
 machine LoadPlatformDescription @platforms/renode/riscv_virt.repl
 
-# Load ELF (path passed via 'elf' variable from run target)
-sysbus LoadELF $elf
+# Load ELF (path from 'elf' variable; @ prefix required for path resolution)
+sysbus LoadELF @$elf
 
-# Capture UART to file (headless/CI: UART does not go to stdout by default)
-# Use relative path so it works for both local CTest and CI (writes to cwd)
-# Peripheral is on sysbus - use sysbus.uart0
-sysbus.uart0 CreateFileBackend "uart_output.txt" false
+# Capture UART to file (uart_file variable required - use absolute path for headless)
+# Caller must: set uart_file "/path/to/uart_output.txt"
+sysbus.uart0 CreateFileBackend $uart_file false
 
-# Run simulation for 5 seconds to capture UART output
+# Start emulation (wrapper uses timeout to stop; app completes in ~1s)
 start
-emulation runFor "00:00:05"
 quit
