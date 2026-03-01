@@ -4,8 +4,8 @@
 
 This roadmap outlines the progressive implementation strategy for building a comprehensive RISC-V bare-metal simulation platform. We follow a **Test-Driven Development (TDD)** approach with **CMake + CTest** build system, starting from simple single-core configurations and progressively adding complexity.
 
-**Current Status:** Phase 6 - gem5 Integration (Both Modes) 🔬 IN PROGRESS  
-**Previous Phase:** Phase 5 - RISC-V Vector Extension (RVV 1.0) ✅ COMPLETE
+**Current Status:** Phase 7 - Renode Integration ✅ COMPLETE  
+**Previous Phase:** Phase 6 - gem5 Integration (Both Modes) ✅ COMPLETE
 
 ---
 
@@ -264,14 +264,13 @@ This roadmap outlines the progressive implementation strategy for building a com
 
 ---
 
-### 🔬 Phase 6: gem5 Integration (Both Modes) - IN PROGRESS
+### ✅ Phase 6: gem5 Integration (Both Modes) (COMPLETE)
 **Goal:** Add cycle-accurate simulation with gem5 SE and FS modes
 
-**Started:** 2026-02-12  
-**Priority:** P1 (High)  
+**Completed:** 2026-02-24  
 **Platform:** gem5 (v23.0+)
 
-#### 6.1 TDD: gem5 Tests (13 tests defined)
+#### 6.1 TDD: gem5 Tests (14 tests defined)
 - [x] Test: Boot on gem5 FS mode (AtomicSimpleCPU) (phase6_gem5_fs_boot_hello)
 - [x] Test: CSR read on gem5 FS (phase6_gem5_fs_csr_hartid, phase6_gem5_fs_csr_mstatus)
 - [x] Test: All Phase 2 tests pass on gem5 FS (phase6_gem5_fs_complete)
@@ -284,7 +283,7 @@ This roadmap outlines the progressive implementation strategy for building a com
 - [x] Test: Boot on gem5 SE mode (phase6_gem5_se_boot_hello)
 - [x] Test: All Phase 2 tests pass on gem5 SE (phase6_gem5_se_complete)
 - [x] Test: Platform name in SE mode (phase6_gem5_se_platform_name)
-- [ ] Test: Compare cycle counts across CPU models (scripts/parse-gem5-stats.py)
+- [x] Test: Compare cycle counts across CPU models (phase6_gem5_fs_cycle_compare)
 
 #### 6.2 gem5 SE (Syscall Emulation) Mode
 - [x] Port application to gem5 SE mode (gem5_se_io.c/h)
@@ -338,54 +337,55 @@ This roadmap outlines the progressive implementation strategy for building a com
 **Exit Criteria:**
 - [x] Application builds for gem5 SE and FS modes
 - [x] gem5 Python configs for all CPU models (Atomic, Timing, Minor, O3)
-- [x] CTest tests defined for gem5 SE and FS (13 tests)
+- [x] CTest tests defined for gem5 SE and FS (14 tests)
 - [x] Performance statistics parser (JSON/CSV/comparison)
 - [x] CI builds gem5 binaries and runs simulations
-- [ ] Validate on actual gem5 simulator (requires gem5 installation)
+- [x] Validate on actual gem5 simulator (CI runs gem5 FS/SE simulations)
 
 ---
 
-### 🤖 Phase 7: Renode Integration
+### ✅ Phase 7: Renode Integration (COMPLETE)
 **Goal:** Add Renode for SoC-level simulation and peripheral modeling
 
-**Duration Estimate:** 3-4 weeks  
-**Priority:** P2 (Medium)  
+**Completed:** 2026-02-24  
 **Platform:** Renode
 
 #### 7.1 TDD: Renode Tests
-- [ ] Test: Boot on Renode
-- [ ] Test: UART communication
-- [ ] Test: Multi-core on Renode
-- [ ] Test: Platform peripherals (GPIO, timers)
-- [ ] Test: Cross-validation with QEMU output
+- [x] Test: Boot on Renode (phase7_renode_boot_hello)
+- [x] Test: UART communication (via run-renode-test.sh, uart_output.txt)
+- [x] Test: Multi-core on Renode (phase7_renode_smp_boot, phase7_renode_smp_complete)
+- [ ] Test: Platform peripherals (GPIO, timers) - deferred to Phase 10
+- [x] Test: Cross-validation with QEMU output (CI cross-validate job)
 
 #### 7.2 Implementation
-- [ ] Platform configuration file: platforms/renode/riscv_virt.repl
-- [ ] Renode launch script: platforms/renode/run.resc
-- [ ] Platform abstraction updates for Renode
-- [ ] Linker script: renode.ld (or reuse qemu-virt.ld)
+- [x] Platform configuration file: platforms/renode/riscv_virt.repl
+- [x] Platform configuration file: platforms/renode/riscv_virt_smp.repl (4-hart SMP)
+- [x] Renode launch script: platforms/renode/configs/run.resc
+- [x] Renode launch script: platforms/renode/configs/run_smp.resc
+- [x] Platform abstraction updates for Renode (PLATFORM_RENODE)
+- [x] Linker script: app/linker/renode.ld
 
 #### 7.3 Renode-Specific Features
-- [ ] Peripheral modeling exploration (timers, GPIO)
-- [ ] Multi-machine configuration (AMP)
-- [ ] Robot Framework test integration
+- [ ] Peripheral modeling exploration (timers, GPIO) - deferred
+- [ ] Multi-machine configuration (AMP) - Phase 8
+- [ ] Robot Framework test integration - deferred
 
 #### 7.4 CMake Integration
-- [ ] Renode CMake preset
-- [ ] Renode run targets
-- [ ] CTest integration
+- [x] Renode CMake preset (renode, renode-smp)
+- [x] Renode run targets (run-renode)
+- [x] CTest integration (5 tests: 3 single-core + 2 SMP)
 
 #### 7.5 CI Updates
-- [ ] Install Renode in CI
-- [ ] Add Renode simulation tests
-- [ ] Validate across QEMU, Spike, gem5, Renode
+- [x] Install Renode in CI (antmicro/renode Docker image)
+- [x] Add Renode simulation tests (simulate-renode, simulate-renode-smp)
+- [x] Validate across QEMU, Spike, gem5, Renode (cross-validate job)
 
 **Exit Criteria:**
-- Application runs on Renode
-- Output matches QEMU behavior
-- Multi-core configurations validated
-- CI includes Renode tests
-- Documentation: Renode setup guide
+- [x] Application runs on Renode
+- [x] Output matches QEMU behavior (cross-validation)
+- [x] Multi-core configurations validated
+- [x] CI includes Renode tests
+- [x] Documentation: BUILD.md Renode setup guide
 
 ---
 

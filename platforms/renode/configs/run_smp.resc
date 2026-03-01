@@ -1,0 +1,13 @@
+# Renode launch script for RISC-V bare-metal SMP application (4 harts)
+# ===================================================================
+# Usage: renode -e "set elf \"path\"; set uart_file \"path/uart_output.txt\"; s @run_smp.resc"
+
+mach create
+machine LoadPlatformDescription @platforms/renode/riscv_virt_smp.repl
+
+sysbus LoadELF @$elf
+
+sysbus.uart0 CreateFileBackend $uart_file false
+
+start
+quit

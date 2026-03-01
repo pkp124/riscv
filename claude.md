@@ -15,9 +15,9 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 
 ## Current Project Status
 
-**Completed:** Phase 0-5 (Design, Build System, QEMU, Spike, SMP, RVV)  
-**Current Phase:** Phase 6 (gem5 Integration) - IN PROGRESS  
-**Last Updated:** 2026-02-12  
+**Completed:** Phase 0-7 (Design, Build System, QEMU, Spike, SMP, RVV, gem5, Renode)  
+**Current Phase:** Phase 8 (AMP) - Next  
+**Last Updated:** 2026-02-24  
 
 ### What Exists
 ✅ Comprehensive design documents (docs/00-06)  
@@ -25,7 +25,7 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 ✅ Full CI pipeline (lint, build matrix, QEMU + Spike simulations, cross-validation)  
 ✅ CMake build system with 20+ presets (CMakeLists.txt, CMakePresets.json)  
 ✅ RISC-V toolchain file (cmake/toolchain/riscv64-elf.cmake)  
-✅ CTest: 7 QEMU Phase 2 + 7 QEMU Phase 4 + 10 QEMU Phase 5 + 8 Spike Phase 3 + 5 Spike Phase 4 + 9 Spike Phase 5 + 13 gem5 Phase 6 tests  
+✅ CTest: 7 QEMU Phase 2 + 7 QEMU Phase 4 + 10 QEMU Phase 5 + 8 Spike Phase 3 + 5 Spike Phase 4 + 9 Spike Phase 5 + 14 gem5 Phase 6 + 5 Renode Phase 7 tests  
 ✅ Application source (startup.S, main.c, uart.c, htif.c, gem5_se_io.c, platform.c, smp.c)  
 ✅ Platform headers (platform.h, csr.h, uart.h, htif.h, gem5_se_io.h, console.h, smp.h, atomic.h)  
 ✅ RVV infrastructure (rvv/rvv_detect.h, rvv/rvv_common.h)  
@@ -41,8 +41,8 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 ✅ gem5 simulations in ci-build.yml (unified workflow)  
 
 ### What Doesn't Exist Yet
-❌ Renode platform support (Phase 7)  
-❌ gem5 runtime validation (requires gem5 simulator installation)
+❌ AMP configurations (Phase 8)  
+❌ Advanced testing & validation (Phase 9)
 
 ---
 
