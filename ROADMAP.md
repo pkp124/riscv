@@ -4,8 +4,8 @@
 
 This roadmap outlines the progressive implementation strategy for building a comprehensive RISC-V bare-metal simulation platform. We follow a **Test-Driven Development (TDD)** approach with **CMake + CTest** build system, starting from simple single-core configurations and progressively adding complexity.
 
-**Current Status:** Phase 7 - Renode Integration ✅ COMPLETE  
-**Previous Phase:** Phase 6 - gem5 Integration (Both Modes) ✅ COMPLETE
+**Current Status:** Phase 8 - SystemC AMP Platform (IN PROGRESS)  
+**Previous Phase:** Phase 7 - Renode Integration ✅ COMPLETE
 
 ---
 
@@ -389,44 +389,66 @@ This roadmap outlines the progressive implementation strategy for building a com
 
 ---
 
-### 🔗 Phase 8: Multi-Processor (AMP) Configurations
-**Goal:** Heterogeneous multi-processor configurations
+### 🔗 Phase 8: SystemC AMP Platform with Spike Instances
+**Goal:** Generate a SystemC virtual platform composed of multiple independent Spike ISS clusters, connected by a TLM-2.0 bus, with shared memory, private scratchpads, CLINT, PLIC, and UART peripherals, configured from a YAML platform description. Primary purpose: AMP subsystem firmware development.
 
-**Duration Estimate:** 3-4 weeks  
-**Priority:** P2 (Medium)  
-**Platforms:** gem5, Renode
+**Priority:** P2 (High for AMP firmware development use case)  
+**Platforms:** SystemC/TLM-2.0 (new), Spike (library mode)  
+**Design Document:** [docs/07-systemc-amp-platform.md](docs/07-systemc-amp-platform.md)
 
-#### 8.1 TDD: AMP Tests
-- [ ] Test: Asymmetric hart configurations
-- [ ] Test: Shared memory communication
-- [ ] Test: Message passing between processors
-- [ ] Test: Different ISA variants on different harts
+#### 8.1 SystemC Build Infrastructure (Foundation)
+- [ ] Add SystemC 2.3.3 and VCML to devcontainer Dockerfile
+- [ ] Build Spike as a shared library (`libriscv.so`)
+- [ ] Write proof-of-concept `hello_spike.cpp` using `sim_t` directly
+- [ ] Add `systemc` CMake preset
 
-#### 8.2 Implementation
-- [ ] AMP boot protocol
-- [ ] Shared memory regions in linker script
-- [ ] Message queue implementation
-- [ ] Heterogeneous hart management
+**Test:** `phase8_systemc_hello_spike` — Spike library loads and runs Phase 2 ELF
 
-#### 8.3 gem5 AMP Configuration
-- [ ] Python configs for heterogeneous CPU types
-- [ ] Different clock domains
-- [ ] Asymmetric cache hierarchies
+#### 8.2 Spike↔TLM Single-Core Wrapper
+- [ ] Implement `spike_mmio_bridge_t` (Spike `abstract_device_t` → TLM `b_transport`)
+- [ ] Implement `spike_cluster_t` SC_MODULE (owns `sim_t`, runs in SC_THREAD)
+- [ ] Wire single cluster → VCML crossbar → VCML memory + VCML UART
+- [ ] Write SystemC-platform test firmware (MMIO UART, no HTIF)
 
-#### 8.4 Renode AMP Configuration
-- [ ] Multi-machine .repl files
-- [ ] Inter-machine communication
+**Tests:** `phase8_systemc_single_uart`
 
-#### 8.5 CMake & CI
-- [ ] AMP presets
-- [ ] CTest for AMP configurations
-- [ ] CI validation
+#### 8.3 PLIC and CLINT Integration
+- [ ] Wire VCML CLINT timer interrupt → Spike hart external interrupt input
+- [ ] Wire VCML PLIC → Spike hart M-mode external interrupt
+- [ ] Write interrupt test firmware (CLINT timer trap, PLIC UART IRQ)
+
+**Tests:** `phase8_systemc_clint_timer`, `phase8_systemc_plic_uart_irq`
+
+#### 8.4 Two-Cluster AMP Topology
+- [ ] Instantiate two independent `spike_cluster_t` modules
+- [ ] Add private SRAM per cluster and shared SRAM via TLM crossbar
+- [ ] Write AMP mailbox firmware pair (cluster0 sender, cluster1 receiver)
+- [ ] Cross-cluster interrupt delivery via PLIC
+
+**Tests:** `phase8_systemc_amp_mailbox`, `phase8_systemc_amp_irq`
+
+#### 8.5 Platform Description Generator
+- [ ] Define YAML schema (cluster, memory, peripheral, firmware sections)
+- [ ] Write `platforms/systemc/generate.py` (Jinja2 templates → C++ `sc_main`)
+- [ ] Generate firmware platform header (address macros per cluster)
+- [ ] CMake custom_command to regenerate on YAML change
+
+**Tests:** Regenerate Phase 8.4 platform from YAML; all Phase 8.4 tests pass
+
+#### 8.6 Multi-Level Memory and Synchronization Tests
+- [ ] Add TLM latency annotations (fast scratchpad vs. slow DRAM)
+- [ ] Firmware benchmark timing access to different memory regions
+- [ ] Cross-cluster AMO spinlock and barrier in shared SRAM
+- [ ] Validate timing ratio and barrier correctness
+
+**Tests:** `phase8_systemc_multilevel_memory`, `phase8_systemc_amp_barrier`
 
 **Exit Criteria:**
-- AMP configurations boot successfully
-- Message passing validated
-- gem5 and Renode AMP working
-- CI covers AMP scenarios
+- [ ] Two-cluster AMP platform boots; both cluster ELFs reach `main()`
+- [ ] CLINT timer and PLIC external interrupt tests pass
+- [ ] Cross-cluster mailbox IPC handshake completes
+- [ ] Platform generated from YAML; tests pass with generated platform
+- [ ] Memory latency differentiation measurable in firmware benchmark
 
 ---
 
@@ -827,7 +849,7 @@ jobs:
 
 ## References
 
-- [Design Proposals](docs/) - Detailed design documents (00-06)
+- [Design Proposals](docs/) - Detailed design documents (00-07)
 - [CMake Documentation](https://cmake.org/documentation/)
 - [CTest Documentation](https://cmake.org/cmake/help/latest/manual/ctest.1.html)
 - [RISC-V ISA Specification](https://riscv.org/technical/specifications/)
@@ -838,6 +860,6 @@ jobs:
 
 ---
 
-**Last Updated:** 2026-02-12  
-**Next Review:** Start of Phase 5  
+**Last Updated:** 2026-03-22  
+**Next Review:** Phase 8 Completion  
 **Maintained By:** Project Team
