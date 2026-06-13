@@ -15,17 +15,22 @@ A comprehensive, self-contained learning and development environment for RISC-V 
 
 ## Project Status
 
-**Current Phase: Phase 3 - Cross-Platform Support (Spike)** ✅ **COMPLETE**  
-**Next Phase: Phase 4 - Multi-Core SMP Support**
+**Current Phase: Phase 8 - SystemC AMP Platform** 🔗 **IN PROGRESS**
+**Proposed Future Work: Phase 11 - Bare-Metal Task Graph Executor**
 
 ### Completed
 - ✅ Phase 0: Design & Setup (comprehensive documentation)
 - ✅ Phase 1: CMake build system, CTest framework, toolchain setup scripts, CI integration
 - ✅ Phase 2: Single-core bare-metal application (TDD, UART driver, CSR access, 7 tests, CI green)
 - ✅ Phase 3: Spike cross-platform support (HTIF driver, 8 Spike tests, CI simulation, cross-validation)
+- ✅ Phase 4: Multi-Core SMP support (QEMU/Spike SMP, spinlocks, barriers, atomics)
+- ✅ Phase 5: RISC-V Vector Extension workloads
+- ✅ Phase 6: gem5 integration
+- ✅ Phase 7: Renode integration
 
 ### Up Next
-- 🔜 Phase 4: Multi-Core SMP support (2-8 harts, spinlocks, barriers)
+- 🔗 Phase 8: SystemC AMP platform with Spike instances
+- 📝 Phase 11: Bare-metal task graph executor proposal awaiting approval
 
 > See [ROADMAP.md](ROADMAP.md) for detailed milestones and [PHASE2_SUMMARY.md](PHASE2_SUMMARY.md) for Phase 2 details.
 
@@ -35,6 +40,7 @@ A comprehensive, self-contained learning and development environment for RISC-V 
 |----------|-------------|
 | [ROADMAP.md](ROADMAP.md) | **⭐ Implementation roadmap with phased milestones** |
 | [BUILD.md](BUILD.md) | **⭐ Build system setup and usage guide** |
+| [Task Graph Executor Tasks](tasks/task-graph-executor.yaml) | Agent-friendly task manifest for the proposed task graph executor |
 | [claude.md](claude.md) | AI assistant context and development guidelines |
 | [.cursorrules](.cursorrules) | Cursor-specific development rules |
 
@@ -49,6 +55,8 @@ A comprehensive, self-contained learning and development environment for RISC-V 
 | [04 - RVV Vector Extension](docs/04-rvv-vector-extension.md) | RVV 1.0 learning plan: concepts, instruction categories, progressive workloads, and LMUL exploration |
 | [05 - Build System](docs/05-build-system.md) | Build system design (now implemented with CMake) |
 | [06 - CI/CD Pipeline](docs/06-ci-cd-pipeline.md) | GitHub Actions workflows for build, simulation, lint, and gem5 |
+| [07 - SystemC AMP Platform](docs/07-systemc-amp-platform.md) | SystemC/TLM AMP virtual platform with Spike instances |
+| [08 - Task Graph Executor](docs/08-task-graph-executor.md) | Proposed C task graph executor design, milestones, safety-readiness plan, and approval gates |
 
 ## Quick Start
 

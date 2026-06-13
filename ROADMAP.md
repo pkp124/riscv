@@ -529,6 +529,139 @@ This roadmap outlines the progressive implementation strategy for building a com
 
 ---
 
+### 📝 Phase 11: Bare-Metal Task Graph Executor (PROPOSED - AWAITING APPROVAL)
+**Goal:** Build a small Taskflow-inspired executor in C for bare-metal RISC-V firmware. The executor will use static task graphs, bounded storage, explicit dependency edges, deterministic scheduler policies, and simulator-driven TDD. The design keeps future SMP, many-core AMP, heterogeneous RVV domains, and functional-safety readiness in scope.
+
+- **Priority:** P2 (High for structured bare-metal workloads and AMP firmware orchestration)
+- **Platforms:** QEMU, Spike, QEMU/Spike SMP, future SystemC AMP, Renode/gem5 where appropriate
+- **Design Document:** [docs/08-task-graph-executor.md](docs/08-task-graph-executor.md)
+- **Agent Task Manifest:** [tasks/task-graph-executor.yaml](tasks/task-graph-executor.yaml)
+- **Approval Gate:** Design, milestones, and task manifest must be approved before implementation begins.
+
+#### 11.0 Planning and Approval
+- [ ] Review Design Proposal 08 with project owner
+- [ ] Review this roadmap phase with project owner
+- [ ] Review `tasks/task-graph-executor.yaml`
+- [ ] Resolve, accept, or defer open top-level requirements
+- [ ] Change approved milestones/tasks from `proposed` to `approved`
+
+**Exit Criteria:**
+- [ ] Design approved
+- [ ] Milestones approved
+- [ ] Task manifest approved for agent use
+- [ ] Implementation scope agreed before code changes begin
+
+#### 11.1 Single-Hart Static DAG Executor
+- [ ] Test first: `phase11_qemu_tge_single_node`
+- [ ] Test first: `phase11_qemu_tge_linear_chain`
+- [ ] Test first: `phase11_qemu_tge_diamond`
+- [ ] Test first: `phase11_qemu_tge_capacity_reject`
+- [ ] Test first: `phase11_spike_tge_single_node`
+- [ ] Test first: `phase11_spike_tge_diamond`
+- [ ] Define minimal public C API in `app/include/tge/tge.h`
+- [ ] Implement caller-owned storage initialization
+- [ ] Implement graph validation and dependency counters
+- [ ] Implement FIFO ready queue and single-hart executor
+- [ ] Report terminal task states
+
+**Exit Criteria:**
+- [ ] Static DAG tests pass on QEMU and Spike
+- [ ] Executor uses no heap allocation
+- [ ] All public structures use fixed-width types
+
+#### 11.2 Invalid Graph and Failure Semantics
+- [ ] Test first: `phase11_qemu_tge_cycle_reject`
+- [ ] Test first: `phase11_qemu_tge_missing_task_reject`
+- [ ] Test first: `phase11_qemu_tge_task_failure`
+- [ ] Test first: `phase11_qemu_tge_failure_skips_dependents`
+- [ ] Test first: `phase11_spike_tge_cycle_reject`
+- [ ] Detect cycles before execution
+- [ ] Reject invalid task/edge references
+- [ ] Define failed and skipped task states
+- [ ] Add optional safe-state callback
+
+**Exit Criteria:**
+- [ ] Invalid graphs fail before task execution
+- [ ] Task failure behavior is deterministic and test-covered
+- [ ] Safe-state callback behavior is test-covered
+
+#### 11.3 Scheduler Policy Interface
+- [ ] Test first: `phase11_qemu_tge_fifo_policy`
+- [ ] Test first: `phase11_qemu_tge_priority_policy`
+- [ ] Test first: `phase11_qemu_tge_affinity_metadata`
+- [ ] Test first: `phase11_spike_tge_priority_policy`
+- [ ] Define scheduler policy interface
+- [ ] Move FIFO scheduling behind policy interface
+- [ ] Add priority policy with deterministic tie-breaks
+- [ ] Add affinity metadata for later SMP/AMP placement
+
+**Exit Criteria:**
+- [ ] FIFO and priority policies use the same executor core
+- [ ] Priority tie-break behavior is deterministic
+- [ ] Policy-specific behavior is independently test-covered
+
+#### 11.4 SMP Task Execution
+- [ ] Test first: `phase11_qemu_tge_smp_parallel_ready`
+- [ ] Test first: `phase11_qemu_tge_smp_dependency_release`
+- [ ] Test first: `phase11_qemu_tge_smp_atomic_completion`
+- [ ] Test first: `phase11_qemu_tge_smp_stress`
+- [ ] Test first: `phase11_spike_tge_smp_parallel_ready`
+- [ ] Reuse Phase 4 hart boot, barriers, spinlocks, and atomics
+- [ ] Add shared ready queue protected by existing spinlock primitives
+- [ ] Add atomic dependency completion
+- [ ] Validate final graph state on hart 0
+
+**Exit Criteria:**
+- [ ] SMP executor tests pass on QEMU
+- [ ] Spike SMP coverage validates core semantics
+- [ ] Race-sensitive tests have bounded timeouts and explicit failure output
+
+#### 11.5 AMP Domain Model
+- [ ] Test first: `phase11_qemu_tge_domain_metadata`
+- [ ] Test first: `phase11_qemu_tge_rvv_capability_route`
+- [ ] Test first: `phase11_systemc_tge_amp_mailbox`
+- [ ] Test first: `phase11_systemc_tge_amp_remote_dependency`
+- [ ] Add execution domain descriptors
+- [ ] Add capability masks for heterogeneous placement
+- [ ] Route RVV-marked tasks to RVV-capable domains in metadata tests
+- [ ] Add remote dependency tests on the Phase 8 SystemC AMP platform when available
+
+**Exit Criteria:**
+- [ ] Domain metadata is validated before AMP runtime support
+- [ ] RVV capability routing is test-covered
+- [ ] Cross-domain dependency test passes once SystemC AMP backend is ready
+
+#### 11.6 Functional-Safety Readiness Layer
+- [ ] Test first: `phase11_qemu_tge_watchdog_hook`
+- [ ] Test first: `phase11_qemu_tge_trace_ring`
+- [ ] Test first: `phase11_qemu_tge_fault_injection_task_failure`
+- [ ] Test first: `phase11_qemu_tge_static_safety_policy`
+- [ ] Add optional watchdog hook points
+- [ ] Add bounded trace ring
+- [ ] Add fault-injection helpers
+- [ ] Add static safety-table scheduler policy
+- [ ] Document requirement-to-test traceability
+
+**Exit Criteria:**
+- [ ] Watchdog and trace hooks are bounded and test-covered
+- [ ] Fault-injection tests cover representative failure modes
+- [ ] Safety-readiness limitations are documented without certification claims
+
+#### 11.7 Examples and Documentation
+- [ ] Test first: `phase11_qemu_tge_example_control_pipeline`
+- [ ] Test first: `phase11_qemu_tge_example_rvv_pipeline`
+- [ ] Add a small control pipeline example
+- [ ] Add a simple RVV-capable pipeline example
+- [ ] Document how to add a scheduling policy
+- [ ] Document how to add a task graph test
+
+**Exit Criteria:**
+- [ ] Examples pass through the RISC-V testbench
+- [ ] Extension documentation is sufficient for another agent to add a policy
+- [ ] README and BUILD docs link to the executor once implementation begins
+
+---
+
 ## CMake Build System Structure
 
 ### Directory Layout
@@ -849,7 +982,7 @@ jobs:
 
 ## References
 
-- [Design Proposals](docs/) - Detailed design documents (00-07)
+- [Design Proposals](docs/) - Detailed design documents (00-08)
 - [CMake Documentation](https://cmake.org/documentation/)
 - [CTest Documentation](https://cmake.org/cmake/help/latest/manual/ctest.1.html)
 - [RISC-V ISA Specification](https://riscv.org/technical/specifications/)
