@@ -15,7 +15,7 @@ A comprehensive, self-contained learning and development environment for RISC-V 
 
 ## Project Status
 
-**Current Phase: Phase 8 - SystemC AMP Platform** 🔗 **IN PROGRESS**  
+**Current Phase: Phase 8 - SystemC AMP Platform** 🔗 **IN PROGRESS**
 **Proposed Future Work: Phase 11 - Bare-Metal Task Graph Executor**
 
 ### Completed

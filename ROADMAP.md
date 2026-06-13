@@ -532,11 +532,11 @@ This roadmap outlines the progressive implementation strategy for building a com
 ### 📝 Phase 11: Bare-Metal Task Graph Executor (PROPOSED - AWAITING APPROVAL)
 **Goal:** Build a small Taskflow-inspired executor in C for bare-metal RISC-V firmware. The executor will use static task graphs, bounded storage, explicit dependency edges, deterministic scheduler policies, and simulator-driven TDD. The design keeps future SMP, many-core AMP, heterogeneous RVV domains, and functional-safety readiness in scope.
 
-**Priority:** P2 (High for structured bare-metal workloads and AMP firmware orchestration)  
-**Platforms:** QEMU, Spike, QEMU/Spike SMP, future SystemC AMP, Renode/gem5 where appropriate  
-**Design Document:** [docs/08-task-graph-executor.md](docs/08-task-graph-executor.md)  
-**Agent Task Manifest:** [tasks/task-graph-executor.yaml](tasks/task-graph-executor.yaml)  
-**Approval Gate:** Design, milestones, and task manifest must be approved before implementation begins.
+- **Priority:** P2 (High for structured bare-metal workloads and AMP firmware orchestration)
+- **Platforms:** QEMU, Spike, QEMU/Spike SMP, future SystemC AMP, Renode/gem5 where appropriate
+- **Design Document:** [docs/08-task-graph-executor.md](docs/08-task-graph-executor.md)
+- **Agent Task Manifest:** [tasks/task-graph-executor.yaml](tasks/task-graph-executor.yaml)
+- **Approval Gate:** Design, milestones, and task manifest must be approved before implementation begins.
 
 #### 11.0 Planning and Approval
 - [ ] Review Design Proposal 08 with project owner
