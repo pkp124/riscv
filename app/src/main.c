@@ -20,7 +20,11 @@
  *   - Matrix multiply
  *   - Scalar vs vector performance comparison
  *
- * Designed to pass Phase 2, Phase 4, and Phase 5 CTest test cases.
+ * Phase 8 (ENABLE_AMP): Asymmetric multi-processing on gem5 FS
+ *   - Heterogeneous clusters (scalar and/or RVV)
+ *   - Shared-SRAM mailbox IPC
+ *   - Per-cluster scratchpad and shared SRAM
+ *   - Cross-cluster barrier
  */
 
 #include "console.h"
@@ -34,6 +38,10 @@
 #include "smp.h"
 #endif
 
+#if defined(ENABLE_AMP)
+#include "amp.h"
+#endif
+
 #if defined(ENABLE_RVV) && NUM_HARTS <= 1
 #include "rvv/rvv_common.h"
 #include "rvv/rvv_detect.h"
@@ -45,9 +53,11 @@
 
 static void print_banner(void);
 
+#if !defined(ENABLE_AMP)
 /* Test results tracking */
 static int tests_passed;
 static int tests_total;
+#endif
 
 /* =============================================================================
  * Helper Functions
@@ -71,6 +81,7 @@ static void print_hex(uint64_t value)
 }
 #endif
 
+#if !defined(ENABLE_AMP)
 /**
  * @brief Record test result
  */
@@ -119,6 +130,7 @@ static void print_summary(int phase)
     console_puts(buf);
     console_puts(" complete. System halted.\n");
 }
+#endif /* !ENABLE_AMP */
 
 /* =============================================================================
  * Phase 2: Single-Core Tests
@@ -235,7 +247,7 @@ static void run_phase2_tests(void)
  * Phase 4: SMP Tests
  * ============================================================================= */
 
-#if NUM_HARTS > 1
+#if NUM_HARTS > 1 && !defined(ENABLE_AMP)
 
 /**
  * @brief Test 1: SMP Boot - all harts come online
@@ -383,7 +395,7 @@ static void run_phase4_tests(void)
     console_puts("\n");
 }
 
-#endif /* NUM_HARTS > 1 */
+#endif /* NUM_HARTS > 1 && !ENABLE_AMP */
 
 /* =============================================================================
  * Phase 5: RVV Tests
@@ -732,7 +744,18 @@ static void print_banner(void)
     console_puts(platform_get_name());
     console_puts("\n");
 
-#if NUM_HARTS > 1
+#if defined(ENABLE_AMP)
+    {
+        char buf[32];
+        console_puts("Phase: 8 - AMP Full System (");
+        int_to_str(AMP_NUM_CLUSTERS, buf, sizeof(buf));
+        console_puts(buf);
+        console_puts(" clusters, ");
+        int_to_str(NUM_HARTS, buf, sizeof(buf));
+        console_puts(buf);
+        console_puts(" harts)\n");
+    }
+#elif NUM_HARTS > 1
     {
         char buf[32];
         console_puts("Phase: 4 - Multi-Core SMP (");
@@ -764,7 +787,9 @@ int main(void)
     console_puts("\n");
 
     /* Run phase-appropriate tests */
-#if NUM_HARTS > 1
+#if defined(ENABLE_AMP)
+    run_phase8_amp_tests();
+#elif NUM_HARTS > 1
     run_phase4_tests();
     print_summary(4);
 #elif defined(ENABLE_RVV)

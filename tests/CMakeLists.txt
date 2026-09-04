@@ -1149,6 +1149,87 @@ if(FALSE AND TARGET app AND RENODE AND PLATFORM STREQUAL "renode" AND NUM_HARTS 
 endif()
 
 # =============================================================================
+# Phase 8: gem5 AMP (YAML topology + optional FS simulation)
+# =============================================================================
+
+find_program(PYTHON3_EXE python3)
+if(PYTHON3_EXE AND EXISTS ${CMAKE_SOURCE_DIR}/platforms/gem5/tests/test_amp_platform.py)
+    add_test(
+        NAME phase8_amp_yaml_unit
+        COMMAND ${PYTHON3_EXE} ${CMAKE_SOURCE_DIR}/platforms/gem5/tests/test_amp_platform.py
+    )
+    set_tests_properties(phase8_amp_yaml_unit PROPERTIES
+        TIMEOUT 30
+        LABELS "phase8;amp;yaml;smoke"
+    )
+
+    foreach(_amp_yaml IN ITEMS amp_2cluster.yaml amp_scalar_rvv.yaml amp_4cluster.yaml)
+        add_test(
+            NAME phase8_amp_yaml_${_amp_yaml}
+            COMMAND ${PYTHON3_EXE}
+                ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/amp_platform.py
+                --validate
+                ${CMAKE_SOURCE_DIR}/platforms/gem5/platforms/${_amp_yaml}
+        )
+        set_tests_properties(phase8_amp_yaml_${_amp_yaml} PROPERTIES
+            PASS_REGULAR_EXPRESSION "YAML validation: PASS"
+            TIMEOUT 15
+            LABELS "phase8;amp;yaml"
+        )
+    endforeach()
+endif()
+
+if(TARGET app AND GEM5_OPT AND PLATFORM STREQUAL "gem5" AND CONFIG STREQUAL "amp")
+    add_test(
+        NAME phase8_gem5_amp_boot
+        COMMAND ${GEM5_OPT}
+            ${GEM5_AMP_CONFIG}
+            --platform=${AMP_PLATFORM_YAML}
+            --cmd=$<TARGET_FILE:app>
+            --fast
+            --max-ticks=500000000
+    )
+    set_tests_properties(phase8_gem5_amp_boot PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] AMP boot: PASS"
+        FAIL_REGULAR_EXPRESSION "panic|fatal"
+        TIMEOUT 300
+        LABELS "phase8;gem5;amp;smoke"
+    )
+
+    add_test(
+        NAME phase8_gem5_amp_mailbox
+        COMMAND ${GEM5_OPT}
+            ${GEM5_AMP_CONFIG}
+            --platform=${AMP_PLATFORM_YAML}
+            --cmd=$<TARGET_FILE:app>
+            --fast
+            --max-ticks=500000000
+    )
+    set_tests_properties(phase8_gem5_amp_mailbox PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[TEST\\] AMP mailbox IPC: PASS"
+        FAIL_REGULAR_EXPRESSION "\\[TEST\\] AMP mailbox IPC: FAIL|panic|fatal"
+        TIMEOUT 300
+        LABELS "phase8;gem5;amp;functional"
+    )
+
+    add_test(
+        NAME phase8_gem5_amp_complete
+        COMMAND ${GEM5_OPT}
+            ${GEM5_AMP_CONFIG}
+            --platform=${AMP_PLATFORM_YAML}
+            --cmd=$<TARGET_FILE:app>
+            --fast
+            --max-ticks=500000000
+    )
+    set_tests_properties(phase8_gem5_amp_complete PROPERTIES
+        PASS_REGULAR_EXPRESSION "\\[RESULT\\] Phase 8 tests: [0-9]+/[0-9]+ PASS"
+        FAIL_REGULAR_EXPRESSION "0/[0-9]+ PASS|panic|fatal"
+        TIMEOUT 300
+        LABELS "phase8;gem5;amp;integration"
+    )
+endif()
+
+# =============================================================================
 # Test Groups
 # =============================================================================
 

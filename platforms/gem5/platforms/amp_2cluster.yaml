@@ -1,0 +1,73 @@
+# AMP platform: 2 clusters x 2 harts
+# Cluster 0: scalar application cores (TimingSimpleCPU, rv64gc)
+# Cluster 1: accelerator cores (MinorCPU, rv64gcv)
+#
+# Memory map:
+#   0x02000000  CLINT
+#   0x0C000000  PLIC
+#   0x10000000  UART (NS16550A)
+#   0x20000000  Cluster 0 scratchpad (64 KiB, 2 ns)
+#   0x22000000  Cluster 1 scratchpad (64 KiB, 2 ns)
+#   0x30000000  Shared SRAM mailbox (512 KiB, 5 ns)
+#   0x80000000  DDR4 DRAM (128 MiB)
+platform:
+  name: amp_2cluster
+  description: "2-cluster AMP: RV64GC application + RV64GCV accelerator"
+
+  simulation:
+    clock: 1GHz
+    mem_mode: timing
+    max_ticks: 10000000000
+
+  clusters:
+    - name: cluster0
+      role: application
+      isa: rv64gc
+      harts: 2
+      cpu_type: TimingSimpleCPU
+      l1i_size: 32kB
+      l1d_size: 32kB
+      l2_size: 256kB
+      scratchpad:
+        name: sram0
+        base: 0x20000000
+        size: 0x10000
+        latency_ns: 2
+
+    - name: cluster1
+      role: accelerator
+      isa: rv64gcv
+      vlen: 256
+      harts: 2
+      cpu_type: MinorCPU
+      l1i_size: 32kB
+      l1d_size: 32kB
+      l2_size: 512kB
+      scratchpad:
+        name: sram1
+        base: 0x22000000
+        size: 0x10000
+        latency_ns: 2
+
+  shared_memory:
+    - name: shared_sram
+      base: 0x30000000
+      size: 0x80000
+      latency_ns: 5
+      kind: sram
+
+    - name: dram
+      base: 0x80000000
+      size: 0x8000000
+      kind: ddr4
+
+  peripherals:
+    - type: uart8250
+      name: uart0
+      base: 0x10000000
+    - type: clint
+      name: clint0
+      base: 0x02000000
+    - type: plic
+      name: plic0
+      base: 0x0C000000

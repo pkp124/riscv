@@ -16,6 +16,10 @@
 #include "csr.h"
 #include "platform.h"
 
+#if defined(ENABLE_AMP)
+#include "amp.h"
+#endif
+
 #include <stdint.h>
 
 /* =============================================================================
@@ -128,6 +132,11 @@ void smp_release_harts(void)
     wmb();
 }
 
+void smp_hart_online(void)
+{
+    atomic_add_u32(&smp_harts_online, 1);
+}
+
 uint32_t smp_get_harts_online(void)
 {
     return atomic_load_u32(&smp_harts_online);
@@ -142,6 +151,7 @@ uint32_t smp_get_num_harts(void)
  * Secondary Hart Entry Point
  * ============================================================================= */
 
+#if !defined(ENABLE_AMP)
 /**
  * @brief Print hart ID to console (helper)
  */
@@ -158,6 +168,7 @@ static void print_hart_id(uint64_t hartid)
     }
     console_puts(buf);
 }
+#endif
 
 /**
  * @brief Entry point for secondary harts
@@ -175,6 +186,12 @@ static void print_hart_id(uint64_t hartid)
  */
 void smp_secondary_entry(uint64_t hartid)
 {
+#if defined(ENABLE_AMP)
+    amp_secondary_entry(hartid);
+    while (1) {
+        __asm__ __volatile__("wfi");
+    }
+#else
     /* Announce this hart is online (with print lock for clean output) */
     spin_lock(&smp_print_lock);
     console_puts("[SMP] Hart ");
@@ -183,7 +200,7 @@ void smp_secondary_entry(uint64_t hartid)
     spin_unlock(&smp_print_lock);
 
     /* Increment online counter atomically */
-    atomic_add_u32(&smp_harts_online, 1);
+    smp_hart_online();
 
     /* === Barrier 1: Boot complete === */
     barrier_wait(&smp_test_barrier);
@@ -215,4 +232,5 @@ void smp_secondary_entry(uint64_t hartid)
     while (1) {
         __asm__ __volatile__("wfi");
     }
+#endif
 }

@@ -351,7 +351,9 @@ void send_command(uint32_t cmd, uint64_t *data, int count) {
 
 ### 7.4 AMP on gem5
 
-gem5 is the best platform for AMP simulation because it allows fully heterogeneous configurations:
+gem5 is the best platform for AMP simulation because it allows fully heterogeneous configurations.
+
+**Status:** Implemented. YAML platforms live in `platforms/gem5/platforms/`. The gem5 script is `platforms/gem5/configs/amp_config.py`. Build with `cmake --preset gem5-amp`.
 
 ```python
 # gem5 AMP configuration (Python)

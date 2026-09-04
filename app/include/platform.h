@@ -135,6 +135,19 @@ static inline void gem5_m5_reset_stats(uint64_t delay, uint64_t period)
 /* PLIC (Platform-Level Interrupt Controller) */
 #define PLIC_BASE 0x0C000000UL
 
+#if defined(ENABLE_AMP)
+/* AMP extra memories (overridden by YAML-generated -D values when present) */
+#ifndef AMP_SHARED_SRAM_BASE
+#define AMP_SHARED_SRAM_BASE 0x30000000UL
+#endif
+#ifndef AMP_CLUSTER0_SCRATCH_BASE
+#define AMP_CLUSTER0_SCRATCH_BASE 0x20000000UL
+#endif
+#ifndef AMP_CLUSTER1_SCRATCH_BASE
+#define AMP_CLUSTER1_SCRATCH_BASE 0x22000000UL
+#endif
+#endif
+
 /* =============================================================================
  * Hart (Hardware Thread) Configuration
  * ============================================================================= */
