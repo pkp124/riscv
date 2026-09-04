@@ -171,6 +171,13 @@ jobs:
             num_harts: "4"
             gem5_mode: "fs"
             artifact_id: "gem5-fs-smp-rvv0"
+          - name: "gem5 FS AMP (2-cluster)"
+            platform: gem5
+            config: amp
+            rvv: "0"
+            num_harts: "4"
+            gem5_mode: "fs"
+            artifact_id: "gem5-amp-rvv0"
           - name: "Renode Single-Core"
             platform: renode
             config: single
@@ -208,7 +215,9 @@ jobs:
               PRESET="spike"
             fi
           elif [ "${{ matrix.platform }}" = "gem5" ]; then
-            if [ "${{ matrix.gem5_mode }}" = "se" ]; then
+            if [ "${{ matrix.config }}" = "amp" ]; then
+              PRESET="gem5-amp"
+            elif [ "${{ matrix.gem5_mode }}" = "se" ]; then
               PRESET="gem5-se"
             elif [ "${{ matrix.config }}" = "smp" ]; then
               PRESET="gem5-fs-smp"
@@ -1135,6 +1144,72 @@ jobs:
           path: |
             m5out/
             gem5_output.txt
+          retention-days: 30
+        continue-on-error: true
+
+  # ============================================================
+  # Job 6b: gem5 AMP Full-System Simulation
+  # ============================================================
+  simulate-gem5-amp:
+    name: "Simulate: gem5 AMP"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [build]
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download gem5 AMP ELF
+        uses: actions/download-artifact@v4
+        with:
+          name: elf-gem5-amp-rvv0
+          path: build/
+
+      - name: Load devcontainer from cache
+        uses: docker/build-push-action@v6
+        with:
+          context: .devcontainer
+          load: true
+          tags: riscv-dev
+          cache-from: type=gha
+
+      - name: Run gem5 AMP simulation
+        timeout-minutes: 20
+        run: |
+          ELF="build/elf-gem5-amp-rvv0/bin/app"
+          [ ! -f "$ELF" ] && ELF=$(find build/ -name 'app' -type f | head -1)
+          chmod +x "${ELF}" 2>/dev/null || true
+
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
+            riscv-dev /opt/gem5/build/RISCV/gem5.opt \
+            platforms/gem5/configs/amp_config.py \
+            --platform=platforms/gem5/platforms/amp_2cluster.yaml \
+            --cmd=${ELF} \
+            --fast \
+            --max-ticks=500000000 \
+            2>&1 | tee gem5_amp_output.txt
+
+          cat gem5_amp_output.txt
+
+      - name: Validate AMP output
+        run: |
+          grep -q "Hello RISC-V" gem5_amp_output.txt || (echo "FAIL: Missing Hello RISC-V"; exit 1)
+          grep -q "\\[TEST\\] AMP boot: PASS" gem5_amp_output.txt || (echo "FAIL: AMP boot"; exit 1)
+          grep -q "\\[RESULT\\] Phase 8 tests:" gem5_amp_output.txt || (echo "FAIL: missing Phase 8 result"; exit 1)
+
+      - name: Upload gem5 AMP output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem5-stats-amp
+          path: |
+            m5out/
+            gem5_amp_output.txt
           retention-days: 30
         continue-on-error: true
 

@@ -34,8 +34,9 @@ set_property(CACHE PLATFORM PROPERTY STRINGS qemu spike gem5 renode)
 set(CONFIG "single" CACHE STRING "Configuration: single, smp, amp")
 set_property(CACHE CONFIG PROPERTY STRINGS single smp amp)
 
-# Number of harts (for SMP/AMP)
-set(NUM_HARTS "1" CACHE STRING "Number of harts (1, 2, 4, 8)")
+# gem5 AMP platform description (YAML)
+set(AMP_PLATFORM_YAML "${CMAKE_SOURCE_DIR}/platforms/gem5/platforms/amp_2cluster.yaml"
+    CACHE FILEPATH "AMP platform YAML (used when CONFIG=amp)")
 
 # RISC-V Vector Extension
 option(ENABLE_RVV "Enable RISC-V Vector Extension (RVV 1.0)" OFF)
@@ -201,6 +202,35 @@ else()
 endif()
 
 # Configuration-specific definitions
+if(CONFIG STREQUAL "amp")
+    find_program(PYTHON3 python3 REQUIRED)
+    execute_process(
+        COMMAND ${PYTHON3} ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/amp_platform.py
+            --cmake ${AMP_PLATFORM_YAML}
+        OUTPUT_VARIABLE AMP_CMAKE_OUT
+        RESULT_VARIABLE AMP_CMAKE_RC
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_VARIABLE AMP_CMAKE_ERR
+    )
+    if(NOT AMP_CMAKE_RC EQUAL 0)
+        message(FATAL_ERROR "Failed to parse AMP YAML ${AMP_PLATFORM_YAML}:\n${AMP_CMAKE_ERR}")
+    endif()
+    string(REPLACE "\n" ";" AMP_CMAKE_LINES "${AMP_CMAKE_OUT}")
+    foreach(AMP_LINE ${AMP_CMAKE_LINES})
+        if(AMP_LINE MATCHES "^([A-Z0-9_]+)=(.*)$")
+            set(_amp_key ${CMAKE_MATCH_1})
+            set(_amp_val ${CMAKE_MATCH_2})
+            if(_amp_key STREQUAL "NUM_HARTS")
+                set(NUM_HARTS "${_amp_val}")
+            else()
+                add_compile_definitions(${_amp_key}=${_amp_val})
+            endif()
+        endif()
+    endforeach()
+    message(STATUS "AMP platform: ${AMP_PLATFORM_YAML}")
+    message(STATUS "AMP harts:    ${NUM_HARTS}")
+endif()
+
 if(CONFIG STREQUAL "smp" OR CONFIG STREQUAL "amp")
     add_compile_definitions(ENABLE_SMP)
     add_compile_definitions(NUM_HARTS=${NUM_HARTS})

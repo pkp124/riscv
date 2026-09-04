@@ -236,6 +236,8 @@ cmake --list-presets
 | `gem5-se` | gem5 Syscall Emulation | gem5 | SE mode |
 | `gem5-fs` | gem5 Full System | gem5 | FS mode |
 | `gem5-fs-smp` | gem5 FS 4-hart SMP | gem5 | FS+SMP |
+| `gem5-amp` | gem5 FS AMP (2-cluster) | gem5 | AMP YAML |
+| `gem5-amp-scalar-rvv` | gem5 FS AMP 1+1 scalar/RVV | gem5 | AMP YAML |
 | `renode` | Renode single-core | Renode | 1 hart |
 | `renode-smp` | Renode 4-hart SMP | Renode | SMP |
 | `release` | Optimized release build | QEMU | Release |
@@ -263,6 +265,11 @@ cmake --build build/spike
 # gem5 Full System mode
 cmake --preset gem5-fs
 cmake --build build/gem5-fs
+
+# gem5 AMP full system (YAML clusters, L1/L2, scratchpads, shared SRAM)
+cmake --preset gem5-amp
+cmake --build build/gem5-amp
+ctest --test-dir build/gem5-amp -L phase8 --output-on-failure
 
 # Renode
 cmake --preset renode

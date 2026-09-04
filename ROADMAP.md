@@ -4,7 +4,7 @@
 
 This roadmap outlines the progressive implementation strategy for building a comprehensive RISC-V bare-metal simulation platform. We follow a **Test-Driven Development (TDD)** approach with **CMake + CTest** build system, starting from simple single-core configurations and progressively adding complexity.
 
-**Current Status:** Phase 8 - SystemC AMP Platform (IN PROGRESS)  
+**Current Status:** Phase 8 - AMP Full System (gem5) IN PROGRESS  
 **Previous Phase:** Phase 7 - Renode Integration ✅ COMPLETE
 
 ---
@@ -389,14 +389,27 @@ This roadmap outlines the progressive implementation strategy for building a com
 
 ---
 
-### 🔗 Phase 8: SystemC AMP Platform with Spike Instances
-**Goal:** Generate a SystemC virtual platform composed of multiple independent Spike ISS clusters, connected by a TLM-2.0 bus, with shared memory, private scratchpads, CLINT, PLIC, and UART peripherals, configured from a YAML platform description. Primary purpose: AMP subsystem firmware development.
+### 🔗 Phase 8: AMP Full-System Platform (gem5) + SystemC ISS path
+**Goal:** Configurable asymmetric multi-processing: choose cluster count, per-cluster ISA (scalar `rv64gc` vs RVV `rv64gcv`), multi-level memories, interconnect, and full-system peripherals.
 
-**Priority:** P2 (High for AMP firmware development use case)  
-**Platforms:** SystemC/TLM-2.0 (new), Spike (library mode)  
-**Design Document:** [docs/07-systemc-amp-platform.md](docs/07-systemc-amp-platform.md)
+**Primary simulator: gem5 Full System** (caches, DDR4, HiFive UART/CLINT/PLIC).  
+**Secondary path:** SystemC/TLM + Spike ISS clusters — see [docs/07-systemc-amp-platform.md](docs/07-systemc-amp-platform.md).
+
+**Design documents:** [docs/03-platform-configurations.md](docs/03-platform-configurations.md) §7, [docs/07-systemc-amp-platform.md](docs/07-systemc-amp-platform.md)
+
+#### 8.0 gem5 AMP topology (YAML-driven)
+- [x] YAML schema for clusters, ISA, CPU model, L1/L2, scratchpads, shared SRAM, DRAM
+- [x] `platforms/gem5/configs/amp_platform.py` loader + overlap validation (no gem5 required)
+- [x] `platforms/gem5/configs/amp_config.py` gem5 FS AMP system (per-cluster L2, SystemXBar, HiFive I/O)
+- [x] Example platforms: `amp_2cluster.yaml`, `amp_scalar_rvv.yaml`, `amp_4cluster.yaml`
+- [x] CMake presets `gem5-amp`, `gem5-amp-scalar-rvv`
+- [x] Firmware: hartid-based cluster roles, shared-SRAM mailbox, scratchpad, barrier
+- [x] CTest: YAML unit tests; gem5 boot/mailbox tests when `gem5.opt` is present
+
+**Tests:** `phase8_amp_yaml_*`, `phase8_gem5_amp_boot`, `phase8_gem5_amp_mailbox`, `phase8_gem5_amp_complete`
 
 #### 8.1 SystemC Build Infrastructure (Foundation)
+
 - [ ] Add SystemC 2.3.3 and VCML to devcontainer Dockerfile
 - [ ] Build Spike as a shared library (`libriscv.so`)
 - [ ] Write proof-of-concept `hello_spike.cpp` using `sim_t` directly

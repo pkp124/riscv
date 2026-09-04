@@ -179,6 +179,14 @@ void smp_init(void);
 void smp_release_harts(void);
 
 /**
+ * @brief Mark the calling secondary hart as online
+ *
+ * Increments the online-hart counter. Called from smp_secondary_entry()
+ * and from AMP secondary entry.
+ */
+void smp_hart_online(void);
+
+/**
  * @brief Get the number of online secondary harts
  * @return Number of secondary harts that have completed boot
  */

@@ -64,6 +64,7 @@ endif()
 # gem5 Python config locations
 set(GEM5_FS_CONFIG ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/fs_config.py)
 set(GEM5_SE_CONFIG ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/se_config.py)
+set(GEM5_AMP_CONFIG ${CMAKE_SOURCE_DIR}/platforms/gem5/configs/amp_config.py)
 
 if(EXISTS ${GEM5_FS_CONFIG})
     message(STATUS "gem5 FS config: ${GEM5_FS_CONFIG}")
@@ -185,6 +186,30 @@ function(add_gem5_run_target TARGET_NAME ELF_TARGET MODE)
         COMMAND ${GEM5_OPT} ${GEM5_ARGS}
         DEPENDS ${ELF_TARGET}
         COMMENT "Running ${ELF_TARGET} on gem5 (${MODE} mode, ${GEM5_CPU_TYPE})"
+        USES_TERMINAL
+    )
+endfunction()
+
+function(add_gem5_amp_run_target TARGET_NAME ELF_TARGET)
+    if(NOT GEM5_OPT)
+        return()
+    endif()
+    if(NOT EXISTS ${GEM5_AMP_CONFIG})
+        message(STATUS "gem5 AMP config script not found: ${GEM5_AMP_CONFIG}")
+        return()
+    endif()
+
+    set(GEM5_ARGS ${GEM5_AMP_CONFIG})
+    list(APPEND GEM5_ARGS --platform=${AMP_PLATFORM_YAML})
+    list(APPEND GEM5_ARGS --cmd=$<TARGET_FILE:${ELF_TARGET}>)
+    if(DEFINED GEM5_CPU_TYPE AND NOT GEM5_CPU_TYPE STREQUAL "")
+        list(APPEND GEM5_ARGS --cpu-type=${GEM5_CPU_TYPE})
+    endif()
+
+    add_custom_target(${TARGET_NAME}
+        COMMAND ${GEM5_OPT} ${GEM5_ARGS}
+        DEPENDS ${ELF_TARGET}
+        COMMENT "Running ${ELF_TARGET} on gem5 AMP (${AMP_PLATFORM_YAML})"
         USES_TERMINAL
     )
 endfunction()

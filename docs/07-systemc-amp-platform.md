@@ -1,5 +1,7 @@
 # Design Proposal 07: SystemC AMP Platform with Spike Instances
 
+> **Implementation note (Phase 8.0):** Full-system AMP (configurable clusters, scalar vs RVV, L1/L2, scratchpads, shared SRAM, UART/CLINT/PLIC) is implemented on **gem5 FS**. See [`platforms/gem5/README.md`](../platforms/gem5/README.md) and `cmake --preset gem5-amp`. This document remains the design for a future SystemC/TLM + Spike ISS virtual platform.
+
 ## 1. Requirements Review and Critical Analysis
 
 ### 1.1 Stated Requirements
