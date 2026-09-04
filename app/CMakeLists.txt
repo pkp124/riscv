@@ -13,6 +13,11 @@ set(APP_SOURCES
     src/gem5_se_io.c
 )
 
+if(CONFIG STREQUAL "amp")
+    list(APPEND APP_SOURCES src/amp.c)
+    message(STATUS "AMP firmware: ENABLED")
+endif()
+
 # Add RVV sources when enabled
 if(ENABLE_RVV)
     list(APPEND APP_SOURCES
@@ -113,7 +118,9 @@ endif()
 
 # gem5 run targets
 if(PLATFORM STREQUAL "gem5")
-    if(GEM5_MODE STREQUAL "se")
+    if(CONFIG STREQUAL "amp")
+        add_gem5_amp_run_target(run app)
+    elseif(GEM5_MODE STREQUAL "se")
         add_gem5_run_target(run app se)
     else()
         add_gem5_run_target(run app fs)

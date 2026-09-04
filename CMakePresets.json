@@ -176,6 +176,32 @@
       }
     },
     {
+      "name": "gem5-amp",
+      "inherits": "default",
+      "displayName": "gem5 FS AMP (2-cluster heterogeneous)",
+      "description": "YAML-driven AMP: scalar TimingSimpleCPU cluster + MinorCPU cluster, L1/L2, scratchpads, shared SRAM, UART/CLINT/PLIC",
+      "binaryDir": "${sourceDir}/build/gem5-amp",
+      "cacheVariables": {
+        "PLATFORM": "gem5",
+        "GEM5_MODE": "fs",
+        "CONFIG": "amp",
+        "NUM_HARTS": "4",
+        "GEM5_CPU_TYPE": "TimingSimpleCPU",
+        "AMP_PLATFORM_YAML": "${sourceDir}/platforms/gem5/platforms/amp_2cluster.yaml"
+      }
+    },
+    {
+      "name": "gem5-amp-scalar-rvv",
+      "inherits": "gem5-amp",
+      "displayName": "gem5 FS AMP (1 scalar + 1 RVV hart)",
+      "description": "Two-hart AMP: RV64GC control core + RV64GCV accelerator hart",
+      "binaryDir": "${sourceDir}/build/gem5-amp-scalar-rvv",
+      "cacheVariables": {
+        "NUM_HARTS": "2",
+        "AMP_PLATFORM_YAML": "${sourceDir}/platforms/gem5/platforms/amp_scalar_rvv.yaml"
+      }
+    },
+    {
       "name": "renode",
       "inherits": "default",
       "displayName": "Renode",
@@ -281,6 +307,11 @@
       "displayName": "Build gem5 FS SMP"
     },
     {
+      "name": "gem5-amp",
+      "configurePreset": "gem5-amp",
+      "displayName": "Build gem5 AMP"
+    },
+    {
       "name": "renode",
       "configurePreset": "renode",
       "displayName": "Build Renode"
@@ -382,6 +413,14 @@
       "name": "gem5-fs-smp",
       "configurePreset": "gem5-fs-smp",
       "displayName": "Test gem5 FS SMP",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "gem5-amp",
+      "configurePreset": "gem5-amp",
+      "displayName": "Test gem5 AMP",
       "output": {
         "outputOnFailure": true
       }

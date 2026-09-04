@@ -1,0 +1,62 @@
+# AMP platform: 1 scalar hart + 1 RVV hart
+platform:
+  name: amp_scalar_rvv
+  description: "1+1 AMP: scalar RV64GC control core + RVV accelerator hart"
+
+  simulation:
+    clock: 1GHz
+    mem_mode: timing
+    max_ticks: 10000000000
+
+  clusters:
+    - name: cluster0
+      role: application
+      isa: rv64gc
+      harts: 1
+      cpu_type: TimingSimpleCPU
+      l1i_size: 32kB
+      l1d_size: 32kB
+      l2_size: 256kB
+      scratchpad:
+        name: sram0
+        base: 0x20000000
+        size: 0x10000
+        latency_ns: 2
+
+    - name: cluster1
+      role: accelerator
+      isa: rv64gcv
+      vlen: 256
+      harts: 1
+      cpu_type: TimingSimpleCPU
+      l1i_size: 32kB
+      l1d_size: 32kB
+      l2_size: 256kB
+      scratchpad:
+        name: sram1
+        base: 0x22000000
+        size: 0x10000
+        latency_ns: 2
+
+  shared_memory:
+    - name: shared_sram
+      base: 0x30000000
+      size: 0x80000
+      latency_ns: 5
+      kind: sram
+
+    - name: dram
+      base: 0x80000000
+      size: 0x8000000
+      kind: ddr4
+
+  peripherals:
+    - type: uart8250
+      name: uart0
+      base: 0x10000000
+    - type: clint
+      name: clint0
+      base: 0x02000000
+    - type: plic
+      name: plic0
+      base: 0x0C000000

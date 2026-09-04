@@ -16,8 +16,8 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 ## Current Project Status
 
 **Completed:** Phase 0-7 (Design, Build System, QEMU, Spike, SMP, RVV, gem5, Renode)  
-**Current Phase:** Phase 8 (AMP) - Next  
-**Last Updated:** 2026-02-24  
+**Current Phase:** Phase 8 (AMP on gem5 FS)  
+**Last Updated:** 2026-09-04  
 
 ### What Exists
 ✅ Comprehensive design documents (docs/00-06)  
@@ -38,10 +38,10 @@ This is a **RISC-V bare-metal system simulation platform** designed for learning
 ✅ gem5 platform support: SE mode (syscall I/O), FS mode (UART + m5ops exit)  
 ✅ gem5 Python configs: fs_config.py (4 CPU models), se_config.py  
 ✅ gem5 performance analysis: parse-gem5-stats.py (JSON/CSV/comparison)  
-✅ gem5 simulations in ci-build.yml (unified workflow)  
+✅ AMP on gem5 FS: YAML clusters, heterogeneous CPUs, L1/L2, scratchpads, shared SRAM mailbox  
 
 ### What Doesn't Exist Yet
-❌ AMP configurations (Phase 8)  
+❌ SystemC + Spike AMP ISS wrapper (Phase 8.1+)  
 ❌ Advanced testing & validation (Phase 9)
 
 ---
