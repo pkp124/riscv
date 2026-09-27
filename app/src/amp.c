@@ -21,7 +21,6 @@ struct amp_mailbox {
     volatile uint32_t status;
     volatile uint32_t command;
     volatile uint32_t from_hart;
-    volatile uint32_t pad;
     volatile uint64_t data[4];
 };
 
@@ -59,7 +58,7 @@ static void amp_announce(uint64_t hartid)
     spin_unlock(&smp_print_lock);
 }
 
-static bool amp_spin_until(volatile uint32_t *cell, uint32_t want)
+static bool amp_spin_until(const volatile uint32_t *cell, uint32_t want)
 {
     uint64_t start = read_csr(mcycle);
     while (*cell != want) {
@@ -180,17 +179,18 @@ void run_phase8_amp_tests(void)
     console_puts("[AMP] Releasing secondary harts...\n");
     smp_release_harts();
 
+#if NUM_HARTS > 1
     {
-        uint32_t need_online = 0;
-        if (NUM_HARTS > 1) {
-            need_online = (uint32_t) NUM_HARTS - 1U;
-        }
+        const uint32_t need_online = (uint32_t) NUM_HARTS - 1U;
         while (smp_get_harts_online() < need_online) {
             /* Wait for secondaries */
         }
         mb();
         boot_ok = (smp_get_harts_online() == need_online);
     }
+#else
+    boot_ok = true;
+#endif
     console_puts("[AMP] All ");
     console_put_dec((uint64_t) NUM_HARTS, buf, (int) sizeof(buf));
     console_puts(buf);
