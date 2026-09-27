@@ -513,6 +513,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build devcontainer image
         uses: docker/build-push-action@v6
         timeout-minutes: 90
@@ -580,6 +583,9 @@ jobs:
           name: elf-${{ matrix.platform }}-${{ matrix.config }}-rvv${{ matrix.rvv }}
           path: artifacts/
         continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Load devcontainer from cache
         uses: docker/build-push-action@v6
@@ -1107,6 +1113,9 @@ jobs:
           name: elf-gem5-fs-single-rvv0
           path: build/
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Load devcontainer from cache
         uses: docker/build-push-action@v6
         with:
@@ -1187,6 +1196,9 @@ jobs:
           name: elf-gem5-amp-rvv0
           path: build/
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Load devcontainer from cache
         uses: docker/build-push-action@v6
         with:
@@ -1259,6 +1271,9 @@ jobs:
         with:
           name: elf-gem5-se-single-rvv0
           path: build/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Load devcontainer from cache
         uses: docker/build-push-action@v6
