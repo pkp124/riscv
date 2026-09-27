@@ -498,9 +498,9 @@ jobs:
   # ============================================================
   # Job 3b: Build Devcontainer (only when .devcontainer changes)
   # ============================================================
-  # Spike and gem5 simulations use "Load devcontainer from cache" - they build
-  # from cache when available. Run build-devcontainer when .devcontainer changes
-  # to populate the cache, or via workflow_dispatch to refresh it.
+  # Spike and gem5 simulations load the image from GHA cache. When
+  # .devcontainer changes, this job rebuilds once and writes the cache;
+  # simulate-* jobs must wait for it so they do not each compile gem5.
   build-devcontainer:
     name: "Build: Devcontainer"
     runs-on: ubuntu-24.04
@@ -541,7 +541,12 @@ jobs:
   simulate-spike:
     name: "Simulate Spike: ${{ matrix.name }}"
     runs-on: ubuntu-24.04
-    needs: [build]
+    needs: [build, build-devcontainer]
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.build.result == 'success' &&
+      (needs.build-devcontainer.result == 'success' || needs.build-devcontainer.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
@@ -1069,11 +1074,17 @@ jobs:
     name: "Simulate: gem5 FS (${{ matrix.cpu_type }})"
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [build]
+    needs: [build, build-devcontainer]
     if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+      always() &&
+      !cancelled() &&
+      needs.build.result == 'success' &&
+      (needs.build-devcontainer.result == 'success' || needs.build-devcontainer.result == 'skipped') &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+      )
     strategy:
       fail-fast: false
       matrix:
@@ -1154,11 +1165,17 @@ jobs:
     name: "Simulate: gem5 AMP"
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [build]
+    needs: [build, build-devcontainer]
     if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+      always() &&
+      !cancelled() &&
+      needs.build.result == 'success' &&
+      (needs.build-devcontainer.result == 'success' || needs.build-devcontainer.result == 'skipped') &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+      )
 
     steps:
       - name: Checkout
@@ -1221,11 +1238,17 @@ jobs:
     name: "Simulate: gem5 SE"
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: [build]
+    needs: [build, build-devcontainer]
     if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+      always() &&
+      !cancelled() &&
+      needs.build.result == 'success' &&
+      (needs.build-devcontainer.result == 'success' || needs.build-devcontainer.result == 'skipped') &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.run_gem5_sims == 'true')
+      )
 
     steps:
       - name: Checkout
