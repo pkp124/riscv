@@ -80,15 +80,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Stage 2: Build Spike (RISC-V ISA Simulator) from source
 # =============================================================================
 # Spike is the official RISC-V reference simulator and not available via apt.
-# We build from source to get the latest RVV support.
+# Pin before bd25d76 (2026-09-23): that commit added #define yield() which
+# breaks the Boost ASIO build (riscv-isa-sim#2448). --without-boost skips
+# the unused interactive socket path so a later bump cannot hit the same
+# macro clash.
 
-ARG SPIKE_COMMIT=master
+ARG SPIKE_COMMIT=19609434bb3d83448eec8796e8f0367c868efbda
 
 RUN git clone https://github.com/riscv-software-src/riscv-isa-sim.git /tmp/spike && \
     cd /tmp/spike && \
     git checkout ${SPIKE_COMMIT} && \
     mkdir build && cd build && \
-    ../configure --prefix=/usr/local && \
+    ../configure --prefix=/usr/local --without-boost && \
     make -j$(nproc) && \
     make install && \
     rm -rf /tmp/spike

@@ -4,7 +4,7 @@
         "dockerfile": "Dockerfile",
         "context": ".",
         "args": {
-            "SPIKE_COMMIT": "master"
+            "SPIKE_COMMIT": "19609434bb3d83448eec8796e8f0367c868efbda"
         }
     },
     "features": {
