@@ -292,5 +292,5 @@ def main():
     sys.exit(exit_event.getCode())
 
 
-if __name__ == "__main__":
-    main()
+# gem5 executes config scripts by loading them; do not gate on __name__.
+main()

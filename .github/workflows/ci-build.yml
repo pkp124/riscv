@@ -1210,9 +1210,11 @@ jobs:
       - name: Run gem5 AMP simulation
         timeout-minutes: 20
         run: |
+          set -o pipefail
           ELF="build/elf-gem5-amp-rvv0/bin/app"
           [ ! -f "$ELF" ] && ELF=$(find build/ -name 'app' -type f | head -1)
           chmod +x "${ELF}" 2>/dev/null || true
+          echo "AMP ELF: ${ELF}"
 
           docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
             riscv-dev /opt/gem5/build/RISCV/gem5.opt \
