@@ -1,0 +1,364 @@
+# Agent-facing task manifest for Design Proposal 08.
+# Human-readable design source: docs/08-task-graph-executor.md
+# Roadmap source: ROADMAP.md Phase 11
+
+project:
+  id: tge
+  name: Bare-Metal Task Graph Executor
+  status: proposed
+  approval_required: true
+  design_doc: docs/08-task-graph-executor.md
+  roadmap_section: "Phase 11: Bare-Metal Task Graph Executor"
+  implementation_allowed: false
+  owner_approval_note: >
+    Implementation tasks must not start until this project and the relevant
+    milestone are changed to approved by the project owner.
+
+status_values:
+  - proposed
+  - approved
+  - in_progress
+  - blocked
+  - done
+  - rejected
+
+agent_protocol:
+  - Read docs/08-task-graph-executor.md before changing executor code.
+  - Confirm project.status, milestone.status, and task.status are approved.
+  - Add or update CTest coverage before implementation.
+  - Use existing RISC-V simulator presets and structured PASS/FAIL output.
+  - Keep task IDs stable in commits and PR descriptions.
+  - Do not implement from proposed tasks unless the owner explicitly approves.
+
+requirements:
+  functional:
+    - TGE-F-001
+    - TGE-F-002
+    - TGE-F-003
+    - TGE-F-004
+    - TGE-F-005
+    - TGE-F-006
+    - TGE-F-007
+    - TGE-F-008
+    - TGE-F-009
+    - TGE-F-010
+    - TGE-F-011
+    - TGE-F-012
+    - TGE-F-013
+    - TGE-F-014
+  non_functional:
+    - TGE-NF-001
+    - TGE-NF-002
+    - TGE-NF-003
+    - TGE-NF-004
+    - TGE-NF-005
+    - TGE-NF-006
+    - TGE-NF-007
+    - TGE-NF-008
+    - TGE-NF-009
+  safety_readiness:
+    - TGE-SAFE-001
+    - TGE-SAFE-002
+    - TGE-SAFE-003
+    - TGE-SAFE-004
+    - TGE-SAFE-005
+    - TGE-SAFE-006
+    - TGE-SAFE-007
+    - TGE-SAFE-008
+    - TGE-SAFE-009
+
+milestones:
+  - id: TGE-M0
+    title: Planning and Approval
+    status: proposed
+    approval_required: true
+    objective: Establish the design, roadmap, and task manifest.
+    exit_criteria:
+      - Design reviewed by the project owner.
+      - ROADMAP.md Phase 11 reviewed by the project owner.
+      - Open top-level requirements accepted, answered, or deferred.
+    tasks:
+      - id: TGE-M0-T1
+        title: Add design proposal
+        status: proposed
+        deliverables:
+          - docs/08-task-graph-executor.md
+        tests: []
+      - id: TGE-M0-T2
+        title: Add roadmap phase
+        status: proposed
+        deliverables:
+          - ROADMAP.md
+        tests: []
+      - id: TGE-M0-T3
+        title: Add agent task manifest
+        status: proposed
+        deliverables:
+          - tasks/task-graph-executor.yaml
+        tests: []
+
+  - id: TGE-M1
+    title: Single-Hart Static DAG Executor
+    status: proposed
+    approval_required: true
+    objective: Execute a static DAG deterministically on one hart.
+    depends_on:
+      - TGE-M0
+    requirements:
+      - TGE-F-001
+      - TGE-F-002
+      - TGE-F-003
+      - TGE-F-005
+      - TGE-NF-001
+      - TGE-NF-002
+      - TGE-SAFE-001
+    tests_first:
+      - phase11_qemu_tge_single_node
+      - phase11_qemu_tge_linear_chain
+      - phase11_qemu_tge_diamond
+      - phase11_qemu_tge_capacity_reject
+      - phase11_spike_tge_single_node
+      - phase11_spike_tge_diamond
+    tasks:
+      - id: TGE-M1-T1
+        title: Define minimal public C API
+        status: proposed
+        dependencies: []
+        deliverables:
+          - app/include/tge/tge.h
+        acceptance:
+          - API uses fixed-width types.
+          - API exposes caller-owned storage.
+          - API does not require heap or standard library calls.
+      - id: TGE-M1-T2
+        title: Add graph initialization and validation
+        status: proposed
+        dependencies:
+          - TGE-M1-T1
+        deliverables:
+          - app/src/tge/tge.c
+        acceptance:
+          - Capacity checks are tested.
+          - Invalid configuration returns explicit status.
+      - id: TGE-M1-T3
+        title: Add FIFO single-hart executor
+        status: proposed
+        dependencies:
+          - TGE-M1-T2
+        deliverables:
+          - app/src/tge/tge.c
+        acceptance:
+          - Single-node, chain, and diamond DAG tests pass on QEMU and Spike.
+
+  - id: TGE-M2
+    title: Invalid Graph and Failure Semantics
+    status: proposed
+    approval_required: true
+    objective: Make graph and task failures explicit and testable.
+    depends_on:
+      - TGE-M1
+    requirements:
+      - TGE-F-004
+      - TGE-F-006
+      - TGE-F-014
+      - TGE-SAFE-002
+      - TGE-SAFE-003
+      - TGE-SAFE-006
+    tests_first:
+      - phase11_qemu_tge_cycle_reject
+      - phase11_qemu_tge_missing_task_reject
+      - phase11_qemu_tge_task_failure
+      - phase11_qemu_tge_failure_skips_dependents
+      - phase11_spike_tge_cycle_reject
+    tasks:
+      - id: TGE-M2-T1
+        title: Detect cycles and invalid edges
+        status: proposed
+        dependencies:
+          - TGE-M1
+        acceptance:
+          - Cycle and invalid-edge tests reject graphs before execution.
+      - id: TGE-M2-T2
+        title: Define task failure and skipped-dependent states
+        status: proposed
+        dependencies:
+          - TGE-M2-T1
+        acceptance:
+          - Failed and skipped task states are visible after executor returns.
+      - id: TGE-M2-T3
+        title: Add safe-state callback
+        status: proposed
+        dependencies:
+          - TGE-M2-T2
+        acceptance:
+          - Safe-state callback is invoked exactly once on graph failure.
+
+  - id: TGE-M3
+    title: Scheduler Policy Interface
+    status: proposed
+    approval_required: true
+    objective: Support multiple deterministic scheduling policies.
+    depends_on:
+      - TGE-M2
+    requirements:
+      - TGE-F-007
+      - TGE-F-008
+      - TGE-SAFE-008
+    tests_first:
+      - phase11_qemu_tge_fifo_policy
+      - phase11_qemu_tge_priority_policy
+      - phase11_qemu_tge_affinity_metadata
+      - phase11_spike_tge_priority_policy
+    tasks:
+      - id: TGE-M3-T1
+        title: Define scheduler policy interface
+        status: proposed
+        dependencies:
+          - TGE-M2
+        acceptance:
+          - FIFO runs through the same interface as future policies.
+      - id: TGE-M3-T2
+        title: Add priority policy
+        status: proposed
+        dependencies:
+          - TGE-M3-T1
+        acceptance:
+          - Priority ties break by task ID.
+      - id: TGE-M3-T3
+        title: Add affinity metadata
+        status: proposed
+        dependencies:
+          - TGE-M3-T1
+        acceptance:
+          - Affinity metadata is stored and observable in tests.
+
+  - id: TGE-M4
+    title: SMP Task Execution
+    status: proposed
+    approval_required: true
+    objective: Execute ready tasks across multiple harts.
+    depends_on:
+      - TGE-M3
+    requirements:
+      - TGE-F-009
+      - TGE-NF-009
+    tests_first:
+      - phase11_qemu_tge_smp_parallel_ready
+      - phase11_qemu_tge_smp_dependency_release
+      - phase11_qemu_tge_smp_atomic_completion
+      - phase11_qemu_tge_smp_stress
+      - phase11_spike_tge_smp_parallel_ready
+    tasks:
+      - id: TGE-M4-T1
+        title: Integrate with Phase 4 SMP boot and barriers
+        status: proposed
+        dependencies:
+          - TGE-M3
+      - id: TGE-M4-T2
+        title: Add shared ready queue protected by spinlock
+        status: proposed
+        dependencies:
+          - TGE-M4-T1
+      - id: TGE-M4-T3
+        title: Add atomic completion propagation
+        status: proposed
+        dependencies:
+          - TGE-M4-T2
+
+  - id: TGE-M5
+    title: AMP Domain Model
+    status: proposed
+    approval_required: true
+    objective: Model heterogeneous domains and prepare remote dependencies.
+    depends_on:
+      - TGE-M4
+    requirements:
+      - TGE-F-010
+      - TGE-F-011
+      - TGE-SAFE-009
+    tests_first:
+      - phase11_qemu_tge_domain_metadata
+      - phase11_qemu_tge_rvv_capability_route
+      - phase11_systemc_tge_amp_mailbox
+      - phase11_systemc_tge_amp_remote_dependency
+    tasks:
+      - id: TGE-M5-T1
+        title: Add domain descriptors
+        status: proposed
+        dependencies:
+          - TGE-M4
+      - id: TGE-M5-T2
+        title: Add capability masks
+        status: proposed
+        dependencies:
+          - TGE-M5-T1
+      - id: TGE-M5-T3
+        title: Add SystemC AMP remote dependency tests
+        status: proposed
+        dependencies:
+          - TGE-M5-T2
+          - Phase 8 SystemC AMP platform
+
+  - id: TGE-M6
+    title: Functional-Safety Readiness Layer
+    status: proposed
+    approval_required: true
+    objective: Add safety-oriented hooks, tracing, and fault injection.
+    depends_on:
+      - TGE-M5
+    requirements:
+      - TGE-F-013
+      - TGE-SAFE-004
+      - TGE-SAFE-005
+      - TGE-SAFE-006
+      - TGE-SAFE-007
+      - TGE-SAFE-008
+    tests_first:
+      - phase11_qemu_tge_watchdog_hook
+      - phase11_qemu_tge_trace_ring
+      - phase11_qemu_tge_fault_injection_task_failure
+      - phase11_qemu_tge_static_safety_policy
+    tasks:
+      - id: TGE-M6-T1
+        title: Add watchdog hook points
+        status: proposed
+        dependencies:
+          - TGE-M5
+      - id: TGE-M6-T2
+        title: Add bounded trace ring
+        status: proposed
+        dependencies:
+          - TGE-M6-T1
+      - id: TGE-M6-T3
+        title: Add static safety-table scheduler
+        status: proposed
+        dependencies:
+          - TGE-M6-T2
+
+  - id: TGE-M7
+    title: Examples and Documentation
+    status: proposed
+    approval_required: true
+    objective: Provide examples and extension guides.
+    depends_on:
+      - TGE-M6
+    tests_first:
+      - phase11_qemu_tge_example_control_pipeline
+      - phase11_qemu_tge_example_rvv_pipeline
+    tasks:
+      - id: TGE-M7-T1
+        title: Add control pipeline example
+        status: proposed
+        dependencies:
+          - TGE-M6
+      - id: TGE-M7-T2
+        title: Add RVV-capable pipeline example
+        status: proposed
+        dependencies:
+          - TGE-M6
+      - id: TGE-M7-T3
+        title: Document new policy and test authoring
+        status: proposed
+        dependencies:
+          - TGE-M7-T1
+          - TGE-M7-T2
