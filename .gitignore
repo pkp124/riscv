@@ -68,5 +68,12 @@ __pycache__/
 *.pyc
 .venv/
 
+# Android / Cry Labeler
+**/.gradle/
+**/local.properties
+**/.idea/
+*.apk
+*.aab
+
 # cppcheck reports
 cppcheck-report.xml
